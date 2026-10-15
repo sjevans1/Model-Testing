@@ -1,0 +1,47 @@
+{
+  "estimated_cost_usd": 0.0,
+  "cost_status": "unknown",
+  "cost_source": "none",
+  "input_tokens": 28847,
+  "output_tokens": 11165,
+  "cache_read_tokens": 0,
+  "cache_write_tokens": 0,
+  "reasoning_tokens": 0,
+  "total_tokens": 40012,
+  "api_calls": 1,
+  "model": "glm-5.3-flash",
+  "provider": "opencode-go",
+  "session_id": "20261014_225827_6b6b33",
+  "completed": true,
+  "partial": false,
+  "interrupted": false,
+  "turn_exit_reason": "text_response(finish_reason=stop)",
+  "failed": false,
+  "service_tier": null,
+  "auxiliary": {
+    "api_calls": 1,
+    "input_tokens": 309,
+    "output_tokens": 14,
+    "cache_read_tokens": 128,
+    "cache_write_tokens": 0,
+    "reasoning_tokens": 0,
+    "estimated_cost_usd": 1.739232e-05,
+    "total_tokens": 323,
+    "by_task": {
+      "title_generation": {
+        "api_calls": 1,
+        "input_tokens": 309,
+        "output_tokens": 14,
+        "cache_read_tokens": 128,
+        "cache_write_tokens": 0,
+        "reasoning_tokens": 0,
+        "estimated_cost_usd": 1.739232e-05
+      }
+    }
+  },
+  "total_including_auxiliary": {
+    "estimated_cost_usd": 1.739232e-05,
+    "total_tokens": 40335,
+    "api_calls": 2
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "task": "T3",
+  "model": "deepseek-v4.1-flash",
+  "label": "deepseek-v4.1-flash",
+  "workdir": "/home/sjeva/bench/model-testing/runs/b/T3/deepseek-v4.1-flash",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "A01",
+      "group": "core",
+      "passed": true,
+      "detail": "id=fde3e631\u2026 hash=953c7c4df4c0\u2026",
+      "not_applicable": false
+    },
+    {
+      "id": "A02",
+      "group": "core",
+      "passed": true,
+      "detail": "snapshot byte-identical after revoke",
+      "not_applicable": false
+    },
+    {
+      "id": "A03",
+      "group": "isolation",
+      "passed": true,
+      "detail": "foreign tenant -> NotFound",
+      "not_applicable": false
+    },
+    {
+      "id": "A04",
+      "group": "isolation",
+      "passed": true,
+      "detail": "foreign revoke refused, state untouched",
+      "not_applicable": false
+    },
+    {
+      "id": "A05",
+      "group": "isolation",
+      "passed": true,
+      "detail": "visible ids=['14b306', '907d3f']",
+      "not_applicable": false
+    },
+    {
+      "id": "A06",
+      "group": "audit",
+      "passed": true,
+      "detail": "actions=['report.read', 'report.revoke', 'report.save']",
+      "not_applicable": false
+    },
+    {
+      "id": "A07",
+      "group": "validation",
+      "passed": true,
+      "detail": "3 invalid inputs rejected",
+      "not_applicable": false
+    },
+    {
+      "id": "A08",
+      "group": "classification",
+      "passed": true,
+      "detail": "confidential save/read/list all admin-gated",
+      "not_applicable": false
+    },
+    {
+      "id": "A09",
+      "group": "roles",
+      "passed": true,
+      "detail": "viewer refused with Forbidden",
+      "not_applicable": false
+    },
+    {
+      "id": "A10",
+      "group": "failclosed",
+      "passed": true,
+      "detail": "unknown role denied on save and revoke",
+      "not_applicable": false
+    },
+    {
+      "id": "A11",
+      "group": "regression",
+      "passed": true,
+      "detail": "dataset registry intact",
+      "not_applicable": false
+    },
+    {
+      "id": "A12",
+      "group": "isolation",
+      "passed": true,
+      "detail": "payload tenant_id ignored; report stays in t1",
+      "not_applicable": false
+    },
+    {
+      "id": "A13",
+      "group": "batch",
+      "passed": true,
+      "detail": "ok",
+      "not_applicable": true
+    },
+    {
+      "id": "A14",
+      "group": "revocation",
+      "passed": true,
+      "detail": "listed but marked revoked via status='revoked'",
+      "not_applicable": false
+    }
+  ],
+  "categories": {
+    "functional": [
+      1.0,
+      "4/4 checks"
+    ],
+    "security": [
+      1.0,
+      "8/8 checks"
+    ],
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'notes.md', 'README.md']"
+    ],
+    "testing": [
+      0.7,
+      "1 test file(s) added, suite green"
+    ],
+    "maintainability": [
+      1.0,
+      "3 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": false
+}

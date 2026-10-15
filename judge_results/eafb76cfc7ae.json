@@ -1,0 +1,12 @@
+{
+  "functional": 88,
+  "security": 93,
+  "instruction": 95,
+  "maintainability": 92,
+  "testing": 94,
+  "efficiency": 95,
+  "critical_failures": [],
+  "rationale": "Nearly all genuine defects are found with precise file:line references: cross-tenant requests, unguarded bypass paths, lost validation, tenant-ignoring listing, replay, missing audits, deleted negative tests, and their missing coverage. Both legitimate design changes are correctly rejected, avoiding false positives. Every tenant/authorization failure is rated Blocker; structure, evidence, remediation, and merge recommendation comply. Only weakness: the bulk operation's false-completion reporting appears solely as remediation advice in B3, never a standalone evidenced finding.",
+  "_task": "T7",
+  "_label": "gpt-6-luna"
+}

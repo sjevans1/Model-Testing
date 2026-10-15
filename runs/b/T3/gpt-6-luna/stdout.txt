@@ -1,0 +1,5 @@
+Implemented Saved Reports in `src/reportcore/service.py`, added `tests/test_saved_reports.py`, and documented design and verification in `notes.md`.
+
+Reports store canonical JSON with a SHA-256 hash alongside actor-derived tenant and owner metadata. Access is tenant- and classification-scoped; only the owner or a same-tenant admin can revoke. Revocation preserves the snapshot.
+
+Verification: `sh run_checks.sh` passed all 7 tests; `python3 -m py_compile src/reportcore/service.py tests/test_saved_reports.py` also passed. The first full test run failed because a test expected a read audit without performing a read; I corrected the test, and the subsequent runs passed.

@@ -1,14 +1,12 @@
 {
-  "functional": 78,
-  "security": 94,
-  "instruction": 70,
-  "maintainability": 75,
-  "testing": 90,
-  "efficiency": 88,
-  "critical_failures": [
-    "contradicting the brief's hard constraints: 400 for ValidationError and NotFound must remain unchanged, but the package maps not-found to 404 and encodes it in test_post_role_not_found_returns_404"
-  ],
-  "rationale": "Implementation-ready package: correct boundaries (service as authz boundary), CAS with version in the SQL predicate, stale handling without auto-retry, atomic audit, named service/handler/UI regressions, real-looking line-range citations. But it disobeys the brief's hard constraint: 400 for ValidationError and NotFound must remain unchanged, yet it maps not-found to 404. Slight redundancy restating stale handling across sections.",
+  "functional": 87,
+  "security": 92,
+  "instruction": 91,
+  "maintainability": 91,
+  "testing": 84,
+  "efficiency": 89,
+  "critical_failures": [],
+  "rationale": "All cited file/line ranges were checked against the actual fixture and are accurate; the reported commands (exit 126 on ./run_checks.sh, 2 passing tests under sh) reproduce exactly, so the evidence is genuine. The package covers every required section, pins CAS in the SQL predicate, keeps authorization server-side, forbids payload-supplied identity, and preserves scope. Deductions: thin boundary rationale, handler tests omit the module-global ACTOR patch and sqlite thread-affinity constraint an implementer will hit, and UI cases lack an automatable harness.",
   "_task": "T2",
   "_label": "gpt-6-luna"
 }

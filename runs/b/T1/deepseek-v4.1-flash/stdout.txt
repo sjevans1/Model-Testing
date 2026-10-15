@@ -1,0 +1,19 @@
+Directory is just BRIEF.md, FACTS.md, baseline hash file, empty stdout/stderr. No existing tests to preserve. I have everything I need — writing the two deliverables now.
+Both deliverables are on disk and verified.
+
+Delivered (in `/home/sjeva/bench/model-testing/runs/b/T1/deepseek-v4.1-flash/`):
+
+- `plan.md` (786 lines) — all eleven required sections, in the brief's order: functional requirements (FR-1..FR-21); nonfunctional (performance, cost, availability, privacy/security/residency, operability, compliance); data ingestion and connectors; knowledge ingestion and permission-aware retrieval; classification and role enforcement; tenant isolation; auditing and monitoring; approval/confirmation boundaries; testing and acceptance; deployment and rollback; dependencies, sequencing and 21 bounded work packages (WP-1..WP-21) with dependencies and exit criteria.
+- `plan-assumptions.md` (153 lines) — 25 numbered assumptions (`A-1`..`A-25`), each with why it was needed and the impact if wrong.
+
+How it engages the specific asks rather than giving a generic architecture lecture:
+
+- Three planes kept separate throughout: every requirement and work package is tagged OP / CA / EU, the roles→capabilities matrix (§5.3) shows operator vs tenant-admin vs end-user side by side, and FR-20 makes the plane split a test-enforced API/authorisation boundary.
+- Per-tenant boundary: §6 gives an explicit isolation mechanism-and-test for every new store (vector index, connector credentials, caches, gateway, metering), and region is treated as a second isolation axis driven by the residency clause.
+- Classification model: §5 does not invent a policy engine (FACTS forbids it) — it expresses the contract's rules with the existing Keycloak roles, workspace membership and `internal`/`confidential`, states the key invariant that classification beats workspace (confidential never visible to viewer/analyst even with membership), and marks dataset-level classification as new work.
+
+Traceability discipline: a fact index (F1–F18) sits at the top; every recommendation cites an F-ref or an A-ref. I verified programmatically that no `A-n` cited in `plan.md` is undefined (and now none of the 25 assumptions is uncited either). Status tags [NEW]/[EXT]/[CFG] are on every work item, and §11.4/§11.5/“Assumptions deliberately not made” list what is explicitly not claimed as existing — no vector store, embedding pipeline, reranking, ERP/DW/SQL Server/object-store connector, policy engine, doc-level ACLs, LLM gateway, or approval framework.
+
+No code was written; only the two deliverable files were created. Nothing outside this directory was touched.
+
+One thing worth flagging for your review: the numeric SLOs and the 99.5% availability target are my proposals (A-8), since FACTS.md states no performance/availability figures — the structure (per-tenant SLOs, explicit degradation) is not an assumption, only the numbers are.

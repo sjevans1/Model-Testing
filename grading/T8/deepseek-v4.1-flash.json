@@ -1,0 +1,57 @@
+{
+  "task": "T8",
+  "model": "deepseek-v4.1-flash",
+  "label": "deepseek-v4.1-flash",
+  "workdir": "/home/sjeva/bench/model-testing/runs/b/T8/deepseek-v4.1-flash",
+  "status": "terminated_after_deliverables",
+  "checks": [
+    {
+      "id": "M1",
+      "group": "functional",
+      "passed": true,
+      "detail": "candidate suite fails on the shipped implementation (70 tests)"
+    },
+    {
+      "id": "M2",
+      "group": "functional",
+      "passed": false,
+      "detail": "candidate suite passes when a correct implementation is dropped in"
+    },
+    {
+      "id": "M3",
+      "group": "security",
+      "passed": true,
+      "detail": "5/5 claim areas referenced by the added tests"
+    }
+  ],
+  "categories": {
+    "functional": [
+      0.5,
+      "two-sided mutation result"
+    ],
+    "security": [
+      1.0,
+      "5/5 claim areas covered"
+    ],
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'test-plan.md', 'README.md', 'CLAIMS.md']"
+    ],
+    "testing": [
+      0.75,
+      "8 test file(s) added, suite not green"
+    ],
+    "maintainability": [
+      1.0,
+      "9 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": false,
+  "two_sided": {
+    "fails_on_shipped": true,
+    "passes_on_fixed": false,
+    "tests_ran": 70,
+    "notes": " recent call last):\n  File \"/home/sjeva/.hermes/cache/scratch/t8-998r0860/fixed/tests/test_claim2_snapshot_integrity.py\", line 136, in test_revoke_requires_an_admin_role\n    with self.assertRaises(Forbidden):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^\nAssertionError: Forbidden not raised\n\n----------------------------------------------------------------------\nRan 70 tests in 0.517s\n\nFAILED (failures=2)\n"
+  }
+}

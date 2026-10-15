@@ -1,0 +1,57 @@
+{
+  "task": "T8",
+  "model": "gpt-6-luna",
+  "label": "gpt-6-luna",
+  "workdir": "/home/sjeva/bench/model-testing/runs/b/T8/gpt-6-luna",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "M1",
+      "group": "functional",
+      "passed": true,
+      "detail": "candidate suite fails on the shipped implementation (16 tests)"
+    },
+    {
+      "id": "M2",
+      "group": "functional",
+      "passed": false,
+      "detail": "candidate suite passes when a correct implementation is dropped in"
+    },
+    {
+      "id": "M3",
+      "group": "security",
+      "passed": true,
+      "detail": "5/5 claim areas referenced by the added tests"
+    }
+  ],
+  "categories": {
+    "functional": [
+      0.5,
+      "two-sided mutation result"
+    ],
+    "security": [
+      1.0,
+      "5/5 claim areas covered"
+    ],
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'test-plan.md', 'README.md', 'CLAIMS.md']"
+    ],
+    "testing": [
+      0.45,
+      "1 test file(s) added, suite not green"
+    ],
+    "maintainability": [
+      1.0,
+      "2 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": false,
+  "two_sided": {
+    "fails_on_shipped": true,
+    "passes_on_fixed": false,
+    "tests_ran": 16,
+    "notes": "ne(\n        ^^^^^^^^^^^^^^^^^^^^\n            \"SELECT revoked_at FROM reports WHERE id = ?\", (report_id,)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        )[\"revoked_at\"]\n        ^^^^^^^^^^^^^^^\n    )\n    ^\nAssertionError: 1792036168.4957945 is not None\n\n----------------------------------------------------------------------\nRan 16 tests in 0.134s\n\nFAILED (failures=3)\n"
+  }
+}

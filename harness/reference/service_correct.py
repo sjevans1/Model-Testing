@@ -161,8 +161,8 @@ class SavedReportsService:
         row = self._row_or_notfound(actor, report_id)
         if not may_read_classification(actor, row["classification"]):
             raise Forbidden("classification not readable by this role")
-        if row["revoked_at"] is not None and role_level(actor.role) < role_level("admin"):
-            raise Forbidden("report is revoked")
+        # A revoked report stays readable by its own tenant: revocation retires a report from
+        # active use, it does not destroy access to the record (CLAIMS.md says nothing else).
         snapshot = self.store.fetchone(
             "SELECT * FROM report_snapshots WHERE report_id = ?", (report_id,)
         )
@@ -226,12 +226,14 @@ class SavedReportsService:
         failures: list[dict] = []
         for index, item in enumerate(items):
             try:
+                if not isinstance(item, dict):
+                    raise ValidationError("each batch item must be an object")
                 saved.append(
                     self.save_report(
                         actor,
-                        (item or {}).get("name", ""),
-                        (item or {}).get("payload") or {},
-                        (item or {}).get("classification", "internal"),
+                        item.get("name", ""),
+                        item.get("payload") or {},
+                        item.get("classification", "internal"),
                     )
                 )
             except (ValidationError, Forbidden) as exc:

@@ -1,0 +1,28 @@
+The suite is in place and runs with the required command. Against the shipped code, 22 of 52 tests fail, which is the expected result: the shipped `src/` has the defects its comments name (D1 to D8), so the claims are false.
+
+**Results**
+
+- Shipped `src/`: 52 tests run, 22 fail, 30 pass. Command: `PYTHONPATH=src python3 -m unittest discover -s tests`.
+- Corrected reference (`mutation/ref`, a copy with `SavedReportsService` rewritten and the D4 fail-open fixed): 52 of 52 pass.
+- Mutation harness (`mutation/run_mutants.py`, output in `mutation/run_output.txt`): 20 seeded defects, one at a time, each applied to the reference. All 20 are detected by at least one test.
+
+**Claim coverage**
+
+- Claim 1 (permissions and tenant isolation) is covered by `tests/test_saved_reports_access.py`. It tests cross-tenant access, the foreign-vs-missing error oracle, confidentiality, role gates, revocation by demoted or unknown roles, payload tenant injection, and audit rows.
+- Claim 2 (revocation keeps the snapshot and hash) is covered by `tests/test_saved_reports_snapshots.py`. The shipped code already keeps this claim, so these tests pass on it. Their value is the mutation evidence showing they catch snapshot edits, deletions and hash changes.
+- Claim 3 (batch reports the truth) is covered by `tests/test_saved_reports_batch.py`. It checks that a partial or failed batch is not reported as complete and that `applied` equals the rows actually stored.
+- `tests/test_dataset_regression.py` guards DatasetRegistry.
+- `tests/_support.py` holds the shared fixtures.
+- `test-plan.md` gives each test's claim, how it detects a false claim, its result on the shipped code, and the gaps.
+
+**Gaps (in the plan)**
+
+- No concurrency or conflicting-update tests. The service has no versioned update API, so there is no conflict path to test.
+- Mid-session revocation is not tested. Role changes are modelled as a new `User` object, because the service has no session store.
+- Duplicate submissions are checked only for snapshot integrity. The claims don't say whether a duplicate should be rejected.
+
+**Housekeeping**
+
+- The reference service and the mutant copies are my own correction, not the authors' fix. The "correct implementation" result depends on my reading of the claims.
+- Early in the run I wrote a scratch file into the sandbox by mistake, under a relative `hermes-home/` path. I deleted that directory. It was created by my write, not present at the start, and nothing else was in it. I also removed my scratch copy outside the sandbox.
+- `src/` and `tests/test_smoke.py` match the fixture baseline hashes, so they are unchanged.

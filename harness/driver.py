@@ -59,6 +59,9 @@ STAGES = {
     "a": ["T2", "T4", "T6"],
     "b": ["T1", "T3", "T5", "T7", "T8"],
     "c": ["T4", "T6"],
+    # extended-budget consistency repeats: the T4 wall-clock ceiling is tight enough that a
+    # 600 s limit, not the model, may decide the outcome, so T4 gets a second look at 900 s.
+    "d": ["T4"],
 }
 
 CEILING_USD = 1.50  # metered-equivalent consumption per candidate, benchmark budget
@@ -115,11 +118,21 @@ def tree_digest(root: pathlib.Path, skip_dirs=("__pycache__", ".git", "node_modu
     return files
 
 
-def prepare(tid: str, model: str, stage: str) -> pathlib.Path:
+def prepare(tid: str, model: str, stage: str, attempt: int = 1) -> pathlib.Path:
     label = CANDIDATES[model]["label"]
     work = RUNS / stage / tid / label
     if work.exists():
-        shutil.rmtree(work)
+        # an earlier attempt may have produced deliverables before it was terminated: keep them
+        produced = [f for f in work.iterdir()
+                    if f.is_file() and f.suffix in (".md", ".png") and f.name != "BRIEF.md"]
+        if produced:
+            keep = work.parent / f"{label}__attempt{max(attempt - 1, 1)}"
+            if keep.exists():
+                shutil.rmtree(keep)
+            shutil.move(str(work), str(keep))
+            print(f"   kept previous attempt tree at {keep.name} ({len(produced)} deliverables)", flush=True)
+        else:
+            shutil.rmtree(work)
     work.mkdir(parents=True)
     (work / "BRIEF.md").write_text((TASKS / f"{tid}.md").read_text())
     fixture = TASK_FIXTURE[tid]
@@ -138,10 +151,48 @@ def prepare(tid: str, model: str, stage: str) -> pathlib.Path:
     return work
 
 
-def run_trial(tid: str, model: str, stage: str, timeout: float, dry: bool = False) -> dict:
+def reap_trial_group(pgid: int) -> list[str]:
+    """Terminate whatever a finished trial left behind, scoped to THAT trial's process group.
+
+    Trials are started with start_new_session=True, so the trial and everything it spawned share
+    a process group. Killing the group cleans up leftover browsers and mock servers precisely,
+    and cannot touch an unrelated process (an earlier name-scan version could, and did, kill the
+    grader's own browser when grading ran alongside a trial).
+    """
+    import signal as _signal
+
+    killed = []
+    try:
+        os.killpg(pgid, _signal.SIGTERM)
+    except OSError:
+        return killed
+    time.sleep(2)
+    for entry in pathlib.Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            stat = (entry / "stat").read_text().rsplit(")", 1)[1].split()
+            if int(stat[2]) != pgid:          # field 5 of /proc/<pid>/stat is the pgid
+                continue
+            cmd = (entry / "cmdline").read_bytes().replace(b"\x00", b" ").decode(errors="replace").strip()
+        except (OSError, IndexError, ValueError):
+            continue
+        pid = int(entry.name)
+        if pid == os.getpid():
+            continue
+        try:
+            os.kill(pid, _signal.SIGKILL)
+            killed.append(f"{pid}:{cmd[:50]}")
+        except OSError:
+            pass
+    return killed
+
+
+def run_trial(tid: str, model: str, stage: str, timeout: float, dry: bool = False,
+              attempt: int = 1) -> dict:
     label = CANDIDATES[model]["label"]
     provider = CANDIDATES[model]["provider"]
-    work = prepare(tid, model, stage)
+    work = prepare(tid, model, stage, attempt)
     brief = (TASKS / f"{tid}.md").read_text()
     env = dict(os.environ)
     env["HERMES_HOME"] = str(HH)
@@ -197,6 +248,16 @@ def run_trial(tid: str, model: str, stage: str, timeout: float, dry: bool = Fals
     )
     record["stdout_tail"] = (work / "stdout.txt").read_text(errors="replace")[-1500:]
     record["session_id"] = usage.get("session_id")
+    record["process_group"] = proc.pid
+    # The terminal tool's background processes can take the trial down with SIGTERM when the
+    # agent's own cleanup runs. If the deliverables are on disk, that is a gradable trial: the
+    # graders read the tree, not the exit status. Record the telemetry gap explicitly.
+    produced = [f.name for f in work.iterdir()
+                if f.is_file() and f.suffix in (".md", ".png") and f.name != "BRIEF.md"]
+    if proc.returncode in (-9, -15) and (produced or changed):
+        record["status"] = "terminated_after_deliverables"
+        record["usage_missing"] = not usage
+        record["termination"] = f"signal {-proc.returncode} after producing {len(produced)} deliverable(s)"
     return record
 
 
@@ -219,7 +280,7 @@ def main() -> int:
                 rec = json.loads(line)
             except ValueError:
                 continue
-            if rec.get("model") in spend and rec.get("stage") == args.stage:
+            if rec.get("model") in spend:
                 spend[rec["model"]] += rec.get("metered_equivalents_usd") or 0.0
 
     total = 0
@@ -234,20 +295,41 @@ def main() -> int:
             rec = None
             for attempt in (1, 2):
                 try:
-                    rec = run_trial(tid, model, args.stage, args.timeout, dry=args.dry_run)
+                    rec = run_trial(tid, model, args.stage, args.timeout, dry=args.dry_run, attempt=attempt)
                 except Exception as exc:  # noqa: BLE001
                     rec = {"task": tid, "model": model, "stage": args.stage,
                            "status": "driver_error", "error": f"{type(exc).__name__}: {exc}",
                            "workdir": str(RUNS / args.stage / tid / CANDIDATES[model]["label"])}
+                # hard control: a record whose usage ledger names a different model than the
+                # one requested is a silent substitution and is never accepted as a result.
                 interrupted = bool(rec.get("interrupted")) or rec.get("exit_code", 0) < 0 \
-                    or not (rec.get("usage") or {})
+                    or not (rec.get("usage") or {}) or bool(rec.get("substituted"))
+                if rec.get("status") == "terminated_after_deliverables":
+                    interrupted = False  # deliverables exist; the graders can score the tree
                 rec["attempt"] = attempt
                 if not interrupted or attempt == 2 or args.dry_run:
                     break
-                rec["status"] = "environmental_interruption"
+                rec["status"] = ("substitution_rejected" if rec.get("substituted")
+                                 else "environmental_interruption")
                 rec["retry_reason"] = "no usable result (stalled or killed); retrying once with a fresh session"
+                # Log the first attempt as its own record before retrying, so a retried trial never
+                # hides the original outcome (the dossier reports first attempts separately).
+                rec["superseded_by_retry"] = True
+                rec["attempt"] = attempt
+                with LOG.open("a") as fh:
+                    fh.write(json.dumps(rec) + "\n")
                 print(f"== {tid} / {model} interrupted ({rec.get('interrupted') or rec.get('exit_code')}); "
                       f"retrying", flush=True)
+            # the process group is reported by run_trial(); never let reaping kill a stage
+            try:
+                pgid = rec.get("process_group")
+                reaped = reap_trial_group(pgid) if isinstance(pgid, int) else []
+            except Exception as exc:  # noqa: BLE001
+                print(f"   warning: leftover cleanup failed: {type(exc).__name__}: {exc}", flush=True)
+                reaped = []
+            if reaped:
+                print(f"   reaped {len(reaped)} leftover process(es) from the finished trial", flush=True)
+            rec["leftovers_reaped"] = len(reaped)
             spend[rec["model"]] = spend.get(rec["model"], 0.0) + (rec.get("metered_equivalents_usd") or 0)
             rec["stage_spend_after"] = round(spend.get(rec["model"], 0.0), 6)
             with LOG.open("a") as fh:

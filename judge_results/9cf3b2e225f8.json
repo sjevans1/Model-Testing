@@ -1,12 +1,12 @@
 {
   "functional": 92,
   "security": 88,
-  "instruction": 95,
-  "maintainability": 96,
-  "testing": 91,
-  "efficiency": 85,
+  "instruction": 94,
+  "maintainability": 93,
+  "testing": 90,
+  "efficiency": 82,
   "critical_failures": [],
-  "rationale": "Line citations verified against the fixture: app.py, users.py, store.py, users.js all match. Every behavioral claim reproduced live: run_checks green, viewer-actor admin grant, stale check, audit row, 200 POST, 400 ValidationError/NotFound, node render-throw probe. Package is implementation-ready: precise status mapping, staged-state machine, save/cancel semantics, ordered authorization, explicit untested-audit gap, named tests, mixed acceptance/stop conditions. Known HTTP-boundary gap honestly flagged, not oversold. Minor inefficiency from anchored error-text strings.",
+  "rationale": "Covers every required element with real, internally consistent citations: stale probe compatible with the earlier version bump, GET shape matches users.js:30's iteration bug, Forbidden provably unraised. Boundaries precise; authz added at the only write path with reasoned check order; 409 plus reload for staleness; audit contract preserved. Honest about the unauthenticated ACTOR gap without scope creep. Minor wrinkles: test-setup tension (module globals vs patched fresh Store), cancel-status wording, cross-section repetition. No fabrication; no prohibited actions.",
   "_task": "T2",
   "_label": "haiku-5.5"
 }

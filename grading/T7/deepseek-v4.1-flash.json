@@ -1,0 +1,97 @@
+{
+  "task": "T7",
+  "model": "deepseek-v4.1-flash",
+  "label": "deepseek-v4.1-flash",
+  "workdir": "/home/sjeva/bench/model-testing/runs/b/T7/deepseek-v4.1-flash",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "D01",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'blocking' present"
+    },
+    {
+      "id": "D02",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'non-blocking' present"
+    },
+    {
+      "id": "D03",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'severity' present"
+    },
+    {
+      "id": "D04",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'severity' present"
+    },
+    {
+      "id": "D05",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'evidence' present"
+    },
+    {
+      "id": "D06",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'remediation' present"
+    },
+    {
+      "id": "D07",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'uncertainty' present"
+    },
+    {
+      "id": "D08",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'merge recommendation' present"
+    },
+    {
+      "id": "D09",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'file' present"
+    },
+    {
+      "id": "D10",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'line' present"
+    },
+    {
+      "id": "D90",
+      "group": "functional",
+      "passed": false,
+      "detail": "0 cited files exist in the tree ([])"
+    },
+    {
+      "id": "D91",
+      "group": "functional",
+      "passed": true,
+      "detail": "deliverable length 27863 chars"
+    }
+  ],
+  "categories": {
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'review.md']"
+    ],
+    "testing": [
+      0.5,
+      "0 test file(s) added (not required by this task)"
+    ],
+    "maintainability": [
+      1.0,
+      "1 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": true
+}

@@ -1,0 +1,25 @@
+Two defects found in the benchmark's OWN reference implementation by candidate test suites (T8)
+===============================================================================================
+R1  get_report() raised Forbidden for a revoked report when the actor was not an admin. No claim
+    in CLAIMS.md states that revocation removes read access; CLAIMS.md promises only that the
+    snapshot and its content hash survive. This was an invented policy in the reference.
+    Detected by: haiku-5.5 test_revoked_report_content_still_readable_by_owner_tenant,
+                 deepseek-v4.1-flash test_revoked_report_is_still_readable_to_the_owning_tenant.
+
+R2  save_batch() raised AttributeError on a malformed (non-dict) item instead of reporting it as
+    a failed item, so "the batch reports the truth" was untestable in that case.
+    Detected by: haiku-5.5 test_non_dict_items_are_not_reported_as_saved.
+
+Both were fixed in harness/reference/service_correct.py, and the reference still passes the
+frozen acceptance suite (14/14) while the defective fixture still fails 10 of 14 checks.
+
+Effect on grading (recomputed after the fix, before any final score):
+  haiku-5.5            detects_defects=True  passes_on_correct=True   (52 tests)  <- full suite
+  gpt-6-luna           detects_defects=True  passes_on_correct=False  (16 tests)
+  deepseek-v4.1-flash  detects_defects=True  passes_on_correct=False  (70 tests)
+
+Remaining failures after the fix are the candidates' own readings of points the task never fixed:
+  luna:     save_batch status must equal "failed" when nothing was saved (claims define only
+            "complete"), and an owning analyst must be refused when revoking.
+  deepseek: revoked reports must remain in the listing with a state flag, and only an admin may
+            revoke.

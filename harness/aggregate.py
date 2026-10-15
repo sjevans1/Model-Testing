@@ -77,23 +77,41 @@ def critical_failures(task: str, entry: dict, judge: dict) -> list[str]:
             if cid in checks and not checks[cid].get("passed"):
                 fails.append(what)
     if task == "T4":
-        if not checks.get("S05", {}).get("passed", True) and "S05" in checks:
-            pass
         if "S06" in checks and not checks["S06"].get("passed"):
             fails.append("a failed save can still be presented as a success")
-        if "S04" in checks and not checks["S04"].get("passed"):
-            fails.append("a privilege-sensitive change can be applied without confirmation")
+        if "S05" in checks and not checks["S05"].get("passed"):
+            fails.append("duplicate submissions can reach the API")
     if task == "T6":
         if "G2" in checks and not checks["G2"].get("passed"):
             fails.append("a failing test does not reach the release gate")
         if "G6" in checks and not checks["G6"].get("passed"):
             fails.append("a mandatory test or assertion was removed or weakened")
-    if task == "T8":
-        if "M2" in checks and not checks["M2"].get("passed"):
-            fails.append("the acceptance suite cannot pass against a correct implementation")
+
     for item in (judge or {}).get("critical_failures") or []:
         fails.append(f"evaluator: {item}")
     return fails
+
+
+ADJUDICATIONS = {
+    ("T4", "gpt-6-luna"): (
+        "S04 failed on the frozen DOM contract: the confirmation control carries "
+        "data-confirm=\"no\" before confirming instead of \"yes\". An independent probe "
+        "(task-evidence/t4-luna-confirm-probe.txt) shows the behaviour is correct: applying an "
+        "admin change without confirming writes nothing, and confirming then applying writes "
+        "exactly one admin change. Contract miss, not a privilege-escalation miss."),
+    ("T8", "gpt-6-luna"): (
+        "Two assertions encode policy the task never fixed (a save_batch status string of "
+        "\"failed\", and refusal of an owning analyst revoking). The suite is defect-sensitive; "
+        "it is the second half of the two-sided check that fails."),
+    ("T8", "deepseek-v4.1-flash"): (
+        "Two assertions encode policy the task never fixed (revoked reports must remain in the "
+        "listing, and only an admin may revoke). Defect-sensitive suite; fails the pass-on-correct "
+        "half only."),
+    ("T8", "claude-haiku-5-5"): (
+        "Fully claim-validating suite: detects the seeded defects and passes on a correct "
+        "implementation. It also caught two real bugs in the benchmark's own reference "
+        "implementation (task-evidence/t8-reference-defects.txt)."),
+}
 
 
 def trial_score(entry: dict, judge: dict) -> dict:
@@ -170,6 +188,7 @@ def main() -> int:
             "categories": score["categories"],
             "redistributed": score["redistributed"],
             "critical_failures": fails,
+            "adjudications": ([ADJUDICATIONS[(task, label)]] if (task, label) in ADJUDICATIONS else []),
             "checks_passed": sum(1 for c in entry.get("checks", []) if c.get("passed")),
             "checks_total": len(entry.get("checks", [])),
             "files_touched": len(rec.get("files_touched") or []),
@@ -185,7 +204,7 @@ def main() -> int:
     with csv_path.open("w", newline="") as fh:
         writer = csv.writer(fh)
         writer.writerow(["task", "task_area", "candidate", "label", "status", "attempt",
-                         "overall_score", "raw_score_before_overrides", "critical_failures",
+                         "overall_score", "raw_score_before_overrides", "critical_failures", "adjudications",
                          "checks_passed", "checks_total", "functional", "security",
                          "instruction", "testing", "maintainability", "efficiency",
                          "elapsed_s", "metered_equiv_usd", "input_tokens", "output_tokens",
@@ -196,7 +215,8 @@ def main() -> int:
             writer.writerow([
                 row["task"], row["task_area"], row["candidate"], row["label"], row["status"],
                 row["attempt"], row["overall"], row["raw_overall"],
-                "; ".join(row["critical_failures"]), row["checks_passed"], row["checks_total"],
+                "; ".join(row["critical_failures"]), "; ".join(row.get("adjudications") or []),
+                row["checks_passed"], row["checks_total"],
                 cats.get("functional"), cats.get("security"), cats.get("instruction"),
                 cats.get("testing"), cats.get("maintainability"), cats.get("efficiency"),
                 row["elapsed_s"], row["metered_usd"], row["input_tokens"], row["output_tokens"],

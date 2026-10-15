@@ -1,0 +1,434 @@
+
+
+### plan.md
+# Solution plan: governed enterprise knowledge and data application
+
+Source of truth: FACTS.md. Every recommendation is tagged:
+- [EXISTS] already in production per FACTS.md
+- [EXTEND] builds on an existing capability
+- [CONFIG] configuration only, no new code
+- [NEW] new work, not in production today
+- [ASSUMPTION] see plan-assumptions.md (A-n)
+
+## 0. Starting position (from FACTS.md)
+
+- Multi-tenant SaaS, PostgreSQL 16, Keycloak 26 OIDC per-tenant realms, roles viewer < analyst < admin plus operator roles customers never see. [EXISTS]
+- Row-level tenant scoping in application code with tests. [EXISTS]
+- Append-only audit table for every write and privileged read. [EXISTS]
+- Workspaces as coarse authorization unit. [EXISTS]
+- Document ingestion (PDF/DOCX <= 25 MB) to object storage, text extraction, classification internal|confidential. [EXISTS]
+- Retrieval: PostgreSQL full-text search over whole documents, filtered by workspace membership. [EXISTS]
+- One REST JSON connector. [EXISTS]
+- Prometheus metrics, structured logs, alert on failed background jobs. [EXISTS]
+- CI with build, unit, integration, container build, signed release, review gate. [EXISTS]
+
+Not available (FACTS.md, explicit): vector store, embedding pipeline, chunking, reranking, ERP / warehouse / SQL Server / object-storage connectors, policy engine beyond roles and workspace membership, document-level ACLs, managed LLM gateway, agentic automation, approval workflow framework.
+
+Implication: the scenario's core capabilities (structured data sources, chunk-level permission-aware retrieval, per-source ACLs, LLM gateway, approvals) are mostly new work. The plan below separates what can extend existing code from what must be built.
+
+## 1. Functional requirements
+
+Three administration planes must stay separate in UI, API, auth scope, and data access.
+
+1.1 Operator control plane (OpenJM staff) [EXTEND]
+- Tenancy: create/suspend/resume tenants. Suspend is new; tenant records and Keycloak realm exist. [NEW for suspend enforcement]
+- Entitlements: set which products/connector types a tenant may use. [NEW]
+- Connector credential rotation for a tenant's connector. [NEW]
+- Per-tenant usage view (request counts, query counts, ingested volume, connector run counts, token counts). Must expose no content. [NEW]
+- Platform-wide policy settings (e.g. default classification, max upload size). [NEW]
+- Operators hold platform-operator roles that customers never see. [EXISTS]
+
+1.2 Customer organisation administration plane [EXTEND]
+- Manage their own users and groups (via their Keycloak realm / group-to-role mapping). [EXISTS in part, EXTEND for UI/API for self-service]
+- Create, configure, and disable data sources (document stores, REST, and new connectors). [NEW for non-REST types]
+- Map groups to workspaces and roles. Workspace membership exists; group-to-workspace mapping is [NEW or CONFIG depending on Keycloak mapper use — see A-3].
+- Mark classification rules for their sources (confidential/internal). [EXTEND]
+- Request a data export and a deletion (deletion must complete within 30 days). Export is [NEW]; deletion pipeline is [NEW].
+- Cannot see or change any other customer's objects. [EXISTS in principle, must be re-tested for new admin endpoints]
+
+1.3 End-user experience [EXTEND]
+- Ask a question scoped to workspaces and sources the user is authorised for.
+- Receive an answer with citations to the source documents or records used. [NEW: citation at chunk and record level]
+- Answers marked low-confidence or "insufficient sources" instead of guessed. [NEW]
+- Conversation history per user, visible only to that user. [NEW unless already present — treat as NEW]
+- Read-only: no action is taken on the user's behalf in this release (no agentic automation exists). [CONFIG policy]
+
+1.4 Out of scope for this plan
+- Write-back to ERP or warehouse. Not required by the scenario; excluded (A-1).
+- Agent actions of any kind. Excluded.
+
+## 2. Nonfunctional requirements
+
+2.1 Performance [ASSUMPTION for targets]
+- Query p95 end-to-end under a target to be agreed (proposed 4 s for retrieval plus LLM, retrieval-only p95 < 500 ms). [ASSUMPTION A-5]
+- Current metrics track request latency, so the target is measurable with existing Prometheus. [EXISTS]
+
+2.2 Cost [ASSUMPTION]
+- LLM usage is per-provider API keys with no gateway. Cost control must be built: per-tenant token metering, per-tenant budget caps, and cache of embeddings. [NEW]
+- Embedding cost is a one-time per-document cost plus re-embed on change. [NEW]
+
+2.3 Availability [ASSUMPTION]
+- Target availability to be agreed (proposed 99.5% monthly for query path). [A-6]
+- Background ingestion may degrade without affecting query availability. [NEW design rule]
+- Degradation mode: if LLM provider is unavailable, return retrieved citations without a generated answer and say so. [NEW]
+
+2.4 Privacy and residency [EXISTS in principle, EXTEND]
+- Customer data stays in the customer region: region-pinned deployment per tenant or per region cluster, and PostgreSQL, object storage, and any embedding store located in that region. [NEW: region placement in deployment; A-2]
+- LLM provider calls: each provider must be chosen to satisfy the region rule; any provider that processes content outside the region is blocked by config. [NEW]
+- No cross-tenant training: no customer content sent to a provider's training setting; provider contracts must disable training. [CONFIG + contract]
+- Deletion within 30 days across content, chunks, embeddings, caches, backups policy. [NEW]
+
+2.5 Operability [EXTEND]
+- Structured logs, Prometheus metrics, failed background-job alert: all exist. [EXISTS]
+- New metrics required: ingestion lag per source, connector run success, deletion-SLA age, LLM token spend per tenant, retrieval empty-result rate. [NEW]
+
+## 3. Data ingestion and connectors
+
+3.1 Existing [EXISTS]
+- Document ingestion (PDF/DOCX up to 25 MB) into object storage with text extraction.
+- REST JSON source connector.
+
+3.2 Connector framework [NEW]
+- Define a common connector interface: discover(), sync(cursor), read(record), deleteRecord(), and credential reference. Extend the REST connector to implement it. [EXTEND]
+- Required connector types (all NEW, none exist):
+  - ERP (SAP / NetSuite / Dynamics): pick one first; the others follow. [A-4]
+  - Data warehouse (Snowflake / BigQuery / Redshift): read-only, pick one first. [A-4]
+  - SQL Server and PostgreSQL: read-only, least-privilege DB roles, parameterised queries only.
+  - Object storage (S3-compatible / Azure Blob / GCS): document source.
+- Each connector must support incremental sync with a cursor and must tombstone deleted source records.
+
+3.3 Credentials [NEW]
+- Connector credentials stored in a secret store, never in the database in clear text; referenced by ID.
+- Rotation by operator plane (section 1.1) without downtime for running syncs.
+- Credentials are never returned by any API after creation.
+
+3.4 Structured data ingestion [NEW]
+- Warehouse and ERP tables are not copied as documents by default. Two options, decision needed (A-7):
+  a) Query-time federation: the application runs governed, parameterised, read-only queries. Lower storage risk, higher latency.
+  b) Sync to a tenant-local analytic store with the same row-level rules. Higher storage, faster queries.
+- Recommendation: start with (a) for SQL Server and PostgreSQL sources, (b) only if latency targets fail.
+
+3.5 Failure handling [NEW]
+- Retry with backoff; dead-letter after N attempts; alert on failed background jobs (existing alert covers the job runner, extend to connector runs).
+
+## 4. Knowledge ingestion and permission-aware retrieval
+
+4.1 Existing [EXISTS]
+- Whole-document full-text search (PostgreSQL FTS), filtered by workspace membership.
+
+4.2 Chunking [NEW]
+- Split extracted text into chunks with stable IDs, source offsets, and page numbers for citations.
+- Each chunk inherits document ACL metadata: tenant, workspace, classification, source ID, and allowed-role set.
+
+4.3 Embeddings and vector search [NEW]
+- Vector store and embedding pipeline are not in production. Choose one: pgvector inside the existing PostgreSQL 16 (lowest new operational surface, keeps region and tenant scoping in one DB) [recommended, A-8], or a separate vector DB (more ops work).
+- Embedding model: per-provider API key; must run in region (A-2).
+- Vector queries must include the tenant and ACL filter in the same SQL statement, not as a post-filter.
+
+4.4 Hybrid retrieval [NEW]
+- Combine FTS (existing) with vector similarity; reranking is not in production and is optional, added only if measured recall demands it (A-9).
+- Retrieval always applies the caller's effective permissions before ranking, never after.
+
+4.5 Permission-aware retrieval rules [NEW + EXTEND]
+- Effective permission = tenant match AND workspace membership AND role rule on classification.
+- Classification rule (from FACTS.md): confidential chunks visible only to admin role, regardless of workspace membership. Internal chunks visible to viewer, analyst, admin when in the workspace.
+- Structured-data rows: row-level filters per source defined by the customer admin; the connector applies them. [NEW]
+- The filter is built once per request from the verified token claims and passed to every retrieval query. [EXTEND]
+
+4.6 Answer generation and grounding [NEW]
+- Prompt contains only retrieved chunks the user is entitled to see.
+- Each claim must cite a chunk ID; answers without citations are shown as "unverified" or suppressed.
+- Confidence: retrieval score threshold; below threshold the answer says it cannot find sufficient sources. [A-10 threshold to be tuned]
+- Log which chunk IDs were used per answer (audit detail, not content). [NEW]
+
+4.7 Cache [NEW, optional]
+- If a cache of answers is added, keys must include tenant, user effective-permission hash, and classification scope. Otherwise do not cache.
+
+## 5. Classification and role enforcement
+
+5.1 Existing [EXISTS]
+- Per-document classification internal | confidential at ingestion.
+- Roles viewer < analyst < admin enforced via Keycloak group-to-role mapping.
+
+5.2 Classification extension [EXTEND]
+- Classification becomes an attribute of source, document, and chunk, with inheritance from source default unless overridden by admin. [NEW]
+- Structured rows and columns can carry classification; column-level confidential is [NEW] and optional (A-11).
+
+5.3 Enforcement points [NEW]
+- Enforce in three places, all required:
+  1. API layer: role check on every endpoint.
+  2. Retrieval SQL: classification and tenant predicates in the query.
+  3. Answer assembly: final check that every cited chunk passes the filter before it leaves the service.
+- A failure in any one check must deny, not fall through.
+
+5.4 Role matrix (proposed, derived from FACTS.md)
+- viewer: internal chunks in own workspaces.
+- analyst: internal chunks in own workspaces; may create queries, no source management.
+- admin (customer): all chunks in own workspaces including confidential; manages users, groups, sources, classifications.
+- operator: no content access. Sees usage, suspension state, credential rotation status. [EXISTS for role, NEW for scope enforcement]
+
+5.5 Change of access [NEW]
+- Any role or workspace change is deliberate (human action), audited, and reversible: keep history, provide revert. [NEW]
+
+## 6. Tenant isolation
+
+6.1 Existing [EXISTS]
+- Row-level tenant scoping in application code with tests.
+- Per-tenant Keycloak realm, OIDC with PKCE.
+
+6.2 Extensions required [NEW]
+- Apply tenant predicate to every new table (chunks, embeddings, connector configs, usage meters, dead-letter queue).
+- Vector index queries include tenant_id in the WHERE clause; add a test that a query with a foreign tenant ID returns zero rows.
+- Connector runners execute per tenant with tenant-scoped credentials; no shared service credential across tenants.
+- Object storage: one bucket or prefix per tenant with per-tenant keys; no listing across tenants.
+- Logs and metrics: tenant label on every metric, but no content in logs.
+
+6.3 Region isolation [NEW]
+- Region is a tenant attribute; the ingestion and query path rejects a request routed to a different region.
+
+6.4 Operator access [CONFIG + NEW]
+- Operator plane reads only usage aggregates and suspension state; the DB role used by operator endpoints has no SELECT on content tables. Enforced by DB grants, not only code. [NEW]
+
+## 7. Auditing and operational monitoring
+
+7.1 Existing [EXISTS]
+- Append-only audit table: actor, tenant, action, object, detail for every write and privileged read.
+- Structured logs, Prometheus, alert on failed jobs.
+
+7.2 Extensions [EXTEND]
+- Audit events for: connector create/rotate/disable, source classification change, role/group/workspace change, retrieval of confidential chunks (chunk IDs in detail), export request, deletion request and completion, tenant suspend/resume, operator usage views.
+- Append-only enforced by DB grants (no UPDATE/DELETE for application role). Confirm this matches the existing implementation; if not, treat as a gap.
+- Audit detail must not contain query text or content unless the customer opts in (A-12).
+
+7.3 Monitoring [NEW]
+- Per-tenant SLO dashboards: query latency, error rate, ingestion lag, connector freshness.
+- Deletion SLA alarm: any deletion request older than 20 days without completion.
+- Cost alarm: tenant token spend over budget.
+- Security alarm: any confidential chunk returned to a non-admin (should be zero; a non-zero value is a P1).
+
+## 8. Approval and confirmation boundaries
+
+There is no approval workflow framework and no agentic automation (FACTS.md). The following is the proposed boundary.
+
+Unattended (system may do without a human):
+- Scheduled connector sync (read-only).
+- Ingestion, chunking, embedding of content already authorised for the source.
+- Retry of failed jobs within policy.
+- Tombstoning of records deleted at source.
+- Deletion of tenant content after an approved deletion request (the request itself is human).
+- Usage metering and alerts.
+
+Requires a human (customer admin):
+- Creating or changing a data source and its credentials.
+- Changing a source's classification default or overriding a document's classification.
+- Granting or revoking groups, roles, and workspace membership.
+- Requesting export or deletion.
+
+Requires a human (OpenJM operator):
+- Tenant suspend and resume.
+- Connector credential rotation (operator-initiated; the system may schedule reminders).
+- Platform-wide policy change.
+- Entitlement change.
+
+Build needed [NEW]: a minimal two-step confirmation for human-gated actions (request, then confirm by a different admin for role/classification changes), recorded in the audit table. Scope: one table plus endpoint pattern, not a general workflow engine. This is new work; do not describe it as existing. [A-13]
+
+## 9. Testing and acceptance
+
+9.1 Existing test base [EXISTS]
+- Unit, integration tests in CI; tenant-scoping tests exist.
+
+9.2 New test suites [NEW]
+- Permission matrix tests: for each role x classification x workspace membership, assert allow/deny at API, retrieval SQL, and answer assembly. Deny must be the default when any check is missing.
+- Cross-tenant tests: every new endpoint and table; attempts with foreign tenant IDs return zero rows or 404.
+- Classification tests: confidential chunk never returned to viewer or analyst, including via vector search and citations.
+- Operator scope tests: operator endpoints cannot return content fields (DB role test and API response test).
+- Connector contract tests against recorded fixtures for each connector; read-only enforcement (no write statements executed).
+- Grounding tests: answers without citations are flagged; unknown answers return the "insufficient sources" response.
+- Deletion tests: after deletion, content, chunks, embeddings, and caches return zero matches; check within 30-day SLA in a staging run.
+- Export tests: export contains only the tenant's data.
+- Audit tests: each listed event produces an audit row; UPDATE/DELETE on audit rows fails.
+
+9.3 Acceptance criteria (proposed; each traceable to FACTS.md)
+- A1: zero cross-tenant rows in any test run (FACTS: no cross-tenant retrieval).
+- A2: confidential documents never returned to viewer or analyst (FACTS: confidential rule).
+- A3: 100% of answers either cite chunk IDs or state insufficient sources (FACTS: traceability and confidence).
+- A4: deletion completes and is verified within 30 days (FACTS: deletion).
+- A5: operator plane can suspend, rotate, and view usage without content read (FACTS: operator plane).
+- A6: every admin access change is audited and reversible (FACTS: deliberate, audited, reversible).
+- A7: performance and availability targets as agreed in A-5/A-6.
+
+9.4 Evaluation of answer quality [NEW]
+- Golden question set per tenant pilot, measured for citation accuracy and refusal correctness. Owner and threshold to be set (A-14).
+
+## 10. Deployment and rollback
+
+10.1 Existing [EXISTS]
+- GitHub Actions CI, container build, signed release, required review and green checks.
+- Ubuntu 24.04 hosts, non-root openjm user.
+
+10.2 Deployment [EXTEND + NEW]
+- Region-specific deployments; each region has its own PostgreSQL, object storage, and worker pool. [NEW]
+- Schema migrations are forward-only and additive for new tables; backfill jobs are separate and resumable.
+- Feature flags per tenant for new connectors and vector retrieval, so a tenant can be enabled, measured, and disabled. [NEW]
+- Pilot: one tenant in one region with one connector before general release.
+
+10.3 Rollback [NEW]
+- Application rollback: previous signed release (exists through release signing).
+- Schema rollback: additive migrations mean old code runs against new schema; no destructive down-migrations in production.
+- Feature rollback: disable tenant feature flag; retrieval falls back to existing FTS path (this path exists and stays until a pilot is accepted).
+- Data rollback: embeddings and chunks can be dropped and rebuilt from source; source documents in object storage are the system of record.
+- Connector rollback: disable sync; tombstones are not applied while disabled.
+
+10.4 Release gates [EXTEND]
+- Permission matrix and cross-tenant suites must be green before any release.
+
+## 11. Dependencies, sequencing and bounded work packages
+
+Dependencies:
+- Region decision (A-2) gates storage and LLM provider choice.
+- LLM provider with region and no-training terms (A-2, A-15) gates embedding and answer generation.
+- Connector priority (A-4) gates connector work.
+- Vector store decision (A-8) gates chunking and retrieval.
+
+Work packages, in order. Each has a size class and a definition of done.
+
+WP1 Permission and isolation hardening [EXTEND, small]
+- Implement classification and role predicates in existing FTS retrieval; permission matrix tests.
+- Done when: the matrix suite is green on the existing FTS path.
+
+WP2 Audit and operator scope [EXTEND, small]
+- New audit events, DB grants for operator role, usage view without content.
+- Done when: operator scope tests and audit tests are green.
+
+WP3 Customer admin self-service [EXTEND, medium]
+- Source create/disable, group and workspace mapping UI/API, classification defaults, reversible change history.
+- Done when: admin changes are audited and reversible in tests.
+
+WP4 Two-step confirmation for human-gated changes [NEW, small-medium]
+- Single table and endpoint pattern.
+- Done when: role change requires second admin confirmation in tests.
+
+WP5 Chunking and chunk-level citations [NEW, medium]
+- Chunks, offsets, page numbers, ACL metadata; citations to chunk ID. Keep FTS on chunks.
+- Done when: citation tests pass and retrieval returns chunks not whole documents.
+
+WP6 Embeddings and hybrid retrieval [NEW, medium-large]
+- Depends on WP5 and A-2, A-8.
+- Done when: tenant and classification predicates are inside the vector query; recall measured against golden set.
+
+WP7 LLM gateway-lite [NEW, medium]
+- Per-tenant key handling, region check, token metering, budget cap, no-training flag.
+- Done when: budget and region tests pass; metering appears in usage view.
+
+WP8 First connector: PostgreSQL or SQL Server read-only federation [NEW, medium]
+- Connector interface, credentials in secret store, rotation, tombstones.
+- Done when: contract tests and read-only enforcement pass in a pilot tenant.
+
+WP9 Object storage connector [NEW, medium]
+- Per-tenant prefixes and keys.
+
+WP10 ERP and warehouse connectors [NEW, large each]
+- One each, after WP8 pattern is proven. Scope to be bounded per vendor (A-4).
+
+WP11 Deletion and export pipeline [NEW, medium]
+- Deletion removes content, chunks, embeddings, caches within 30 days; export per tenant.
+- Done when: deletion verification test passes end to end.
+
+WP12 Monitoring and SLOs [EXTEND, small]
+- New metrics, dashboards, deletion SLA alarm, cost alarm, P1 security alarm.
+
+WP13 Pilot and evaluation [CONFIG + process, small]
+- One tenant, one region, one connector, golden set, go/no-go against A7.
+
+Sequencing: WP1 and WP2 first (they protect what exists and are required even before new sources). WP3 and WP4 next. WP5 before WP6. WP7 before any LLM answer goes to a pilot tenant. WP8 before WP10. WP11 before pilot exit, since deletion is a contractual 30-day obligation.
+
+## 12. Summary of work classification
+
+- Configuration only: region placement of existing deployment, feature flags, provider no-training settings, alert thresholds, release gates.
+- Extension of what exists: classification predicates in retrieval, tenant scoping on new tables, audit events, workspace/role admin UI, REST connector, CI gates, monitoring.
+- New work: operator control plane features (suspend enforcement, entitlements, credential rotation, usage view), chunking, embeddings, vector search, hybrid retrieval, grounding and citations, LLM gateway-lite, every connector except REST, connector credential store, deletion and export pipeline, two-step confirmation, region routing, column-level classification (optional), answer evaluation.
+
+
+### FACTS.md
+# FACTS.md — what exists today, and what is contractually required
+
+Authoritative for T1. If a plan needs something outside this list, it must say so explicitly
+instead of assuming it exists.
+
+## Deployed and working (production)
+
+- Multi-tenant SaaS on Ubuntu 24.04, PostgreSQL 16.15, Keycloak 26.7.4 for SSO, Node 22 and
+  Python 3.11 services, deployed as a non-root `openjm` user.
+- Every request carries a tenant claim; row-level tenant scoping is enforced in application
+  code and covered by tests. Customer data for one tenant is never visible to another.
+- Keycloak realms per tenant, OIDC with PKCE, group-to-role mapping: roles are
+  `viewer` < `analyst` < `admin`, plus platform-operator roles that customers never see.
+- An audit table records actor, tenant, action, object and detail for every write and every
+  privileged read; audit rows are append-only.
+- Workspaces: a named container that groups a customer's folders and resources. Workspace
+  membership is the coarse authorization unit today.
+- Document ingestion for PDF/DOCX up to 25 MB into object storage, with text extraction and
+  a per-document classification of `internal` or `confidential`. Chunking and embeddings are
+  **not** in production.
+- A retrieval service that searches **whole documents** with PostgreSQL full-text search,
+  filtered by workspace membership; there is no vector store in production.
+- Connectors: a REST source connector for JSON APIs. No ERP, warehouse, SQL Server or
+  object-storage connectors exist yet.
+- Operational monitoring: structured logs, Prometheus metrics for request latency and error
+  rates, and an alert on failed background jobs.
+- CI: GitHub Actions with build, unit and integration tests, a container build and a signed
+  release; every merge requires review and green checks.
+
+## Contractual and business requirements
+
+- Customer data stays within the customer's region; no cross-tenant training, no cross-tenant
+  retrieval. A tenant administrator can request a data export; a deletion request must remove
+  content and embeddings within 30 days.
+- Every answer that a user can act on must be traceable to the sources it used, and answers
+  that the system is not confident about must say so rather than guess.
+- Confidential documents are readable only by tenant administrators, never by `viewer` or
+  `analyst`, regardless of workspace membership.
+- The operator plane must be able to suspend a tenant, rotate a connector credential and see
+  per-tenant usage without being able to read customer content.
+- Customer administrators manage their own users, groups and data sources, and cannot see or
+  change anything belonging to another customer.
+- Administrative changes to access must be deliberate, audited, and reversible.
+
+## Explicitly not available
+
+- No vector database, no embedding pipeline, no reranking in production.
+- No ERP (SAP/NetSuite/Dynamics), data-warehouse (Snowflake/BigQuery/Redshift), SQL Server or
+  object-storage connector.
+- No policy engine beyond Keycloak roles and workspace membership; no document-level ACLs
+  beyond the `internal`/`confidential` classification.
+- No managed LLM gateway: model access is per-provider API keys today.
+- No agentic automation in the product; there is no approval workflow framework to reuse.
+
+
+### plan-assumptions.md
+# Assumptions for plan.md
+
+Each assumption is referenced as A-n in plan.md. Items not listed here are either stated in FACTS.md or tagged NEW in plan.md.
+
+- A-1: No write-back to ERP or warehouse systems is required; the product is read-only over sources.
+- A-2: Region choice (which regions, one cluster or many) is not decided. Plan assumes region-pinned deployments and an LLM/embedding provider that can process data in-region with no-training terms. Provider availability per region is unverified.
+- A-3: Group-to-workspace mapping can be implemented via Keycloak group attributes or an application table; the plan does not assume an existing mapping.
+- A-4: Connector priority is not specified. Plan assumes PostgreSQL or SQL Server first, object storage second, then one ERP and one warehouse, each chosen by the customer's need.
+- A-5: Latency targets (proposed 4 s end-to-end p95, 500 ms retrieval p95) are placeholders, not contractual.
+- A-6: Availability target (proposed 99.5% monthly for query path) is a placeholder.
+- A-7: Whether structured data is queried at source (federation) or synced to a tenant store is undecided; plan recommends federation first.
+- A-8: pgvector inside the existing PostgreSQL 16 is assumed to be acceptable for volume and to meet region and operations needs. Not measured.
+- A-9: Reranking is optional and added only if measured recall requires it.
+- A-10: The retrieval-score threshold for "insufficient sources" is undefined and must be tuned on the golden set.
+- A-11: Column-level classification for structured data is optional; not required by FACTS.md.
+- A-12: Audit detail excludes query text by default; customer opt-in for storing it is assumed acceptable.
+- A-13: A two-step confirmation for human-gated access changes is needed. FACTS.md says no approval framework exists; the plan assumes a minimal one is acceptable scope.
+- A-14: An owner and pass threshold for answer quality evaluation are not defined.
+- A-15: LLM and embedding providers will contractually disable training on customer data. Not verified.
+- A-16: The existing audit table already enforces append-only at the DB grant level or can be extended to do so. Not verified against code.
+- A-17: The existing REST connector can be refactored to the common connector interface without a rewrite. Not verified against code.
+- A-18: Existing Keycloak per-tenant realms can carry the roles needed for classification enforcement without a new identity provider.
+- A-19: Pilot tenant, region and golden question set are available to the team. Not confirmed.
+- A-20: Deletion "content and embeddings within 30 days" includes backups only on a stated backup-expiry policy; backup handling is not specified in FACTS.md and must be decided.
+- A-21: Export format is not specified; plan assumes a per-tenant archive of documents plus structured metadata.
+- A-22: Work package sizes (small/medium/large) are relative estimates, not measured effort.

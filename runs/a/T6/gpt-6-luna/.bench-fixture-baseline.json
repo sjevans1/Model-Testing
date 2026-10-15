@@ -1,0 +1,12 @@
+{
+ "BRIEF.md": "0ead6a1fe73d0ed3",
+ "README.md": "117e23975daa673d",
+ "acceptance/manifest.json": "ad5e48165c4e7d29",
+ "checks/nested/test_nested.py": "1d57f7ed822f35e3",
+ "run_ci.sh": "9b197b718fd4d3ec",
+ "src/tally.py": "ba00e3f12b5b33c5",
+ "tests/__init__.py": "e3b0c44298fc1c14",
+ "tests/test_acceptance_manifest.py": "84bd2e4bbba7b7a1",
+ "tests/test_tally.py": "8f7be6957bafc192",
+ "tools/write_manifest.py": "e69e18db029c1fef"
+}

@@ -1,0 +1,29 @@
+test_manifest_lists_every_test_module (tests.test_acceptance_manifest.TestAcceptanceManifest.test_manifest_lists_every_test_module) ... ok
+test_per_test_records_are_successful (tests.test_acceptance_manifest.TestAcceptanceManifest.test_per_test_records_are_successful)
+Every per-test record we can see succeeded, so the run 'looks' green. ... FAIL
+test_mean_empty_raises (tests.test_tally.TestTally.test_mean_empty_raises) ... ok
+test_mean_simple (tests.test_tally.TestTally.test_mean_simple) ... ok
+test_median_even_length (tests.test_tally.TestTally.test_median_even_length) ... ok
+test_median_odd_length (tests.test_tally.TestTally.test_median_odd_length) ... ok
+test_percentile_bounds (tests.test_tally.TestTally.test_percentile_bounds) ... ok
+test_percentile_p90 (tests.test_tally.TestTally.test_percentile_p90) ... ok
+test_summarize_shape (tests.test_tally.TestTally.test_summarize_shape) ... ok
+
+======================================================================
+FAIL: test_per_test_records_are_successful (tests.test_acceptance_manifest.TestAcceptanceManifest.test_per_test_records_are_successful)
+Every per-test record we can see succeeded, so the run 'looks' green.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/sjeva/bench/model-testing/runs/a/T6/haiku-5.5/tests/test_acceptance_manifest.py", line 40, in test_per_test_records_are_successful
+    self.assertFalse(timed_out,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+                     f"nested check did not complete within {NESTED_BUDGET_S}s; "
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     f"partial output: {out.strip()!r}")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : nested check did not complete within 3s; partial output: 'test_first (test_nested.TestNested.test_first) ... ok\ntest_second (test_nested.TestNested.test_second) ... ok\ntest_slow_export (test_nested.TestNested.test_slow_export) ...'
+
+----------------------------------------------------------------------
+Ran 9 tests in 3.008s
+
+FAILED (failures=1)

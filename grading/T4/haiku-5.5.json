@@ -1,0 +1,96 @@
+{
+  "task": "T4",
+  "model": "claude-haiku-5-5",
+  "label": "haiku-5.5",
+  "workdir": "/home/sjeva/bench/model-testing/runs/a/T4/haiku-5.5",
+  "status": "failed",
+  "checks": [
+    {
+      "id": "S01",
+      "group": "functional",
+      "desc": "changing the dropdown stages the change and writes nothing",
+      "passed": true,
+      "detail": "no write on stage, #pending-u1 visible, save+cancel present"
+    },
+    {
+      "id": "S02",
+      "group": "functional",
+      "desc": "the explicit apply control writes exactly once and reports success",
+      "passed": true,
+      "detail": "one write, status='saved: ana@example.test now has analyst access.'"
+    },
+    {
+      "id": "S03",
+      "group": "functional",
+      "desc": "discard reverts the staged value and writes nothing",
+      "passed": true,
+      "detail": "discard reverted the select and wrote nothing"
+    },
+    {
+      "id": "S04",
+      "group": "security",
+      "desc": "a privilege-sensitive change requires an explicit confirmation first",
+      "passed": true,
+      "detail": "sensitive change gated, then applied once"
+    },
+    {
+      "id": "S05",
+      "group": "functional",
+      "desc": "in-flight submission shows a loading state and blocks duplicate submits",
+      "passed": true,
+      "detail": "loading shown, apply disabled, exactly one write"
+    },
+    {
+      "id": "S06",
+      "group": "functional",
+      "desc": "a failed submission shows an error, never a success claim",
+      "passed": true,
+      "detail": "error shown ('Not saved: the server returned 500. ana@example.test still has viewer access. Your change to analyst is still staged. Apply again or discard it.'), no success claim"
+    },
+    {
+      "id": "S07",
+      "group": "functional",
+      "desc": "a stale-version conflict is surfaced, not silently swallowed",
+      "passed": true,
+      "detail": "conflict surfaced: 'Conflict: ana@example.test was changed by someone else. Current access is viewer. Your change to analyst is still staged. Review it, then apply again or discard it.'"
+    },
+    {
+      "id": "S08",
+      "group": "a11y",
+      "desc": "the controls have accessible names and the live regions are labelled",
+      "passed": true,
+      "detail": "select + apply control + live regions labelled"
+    },
+    {
+      "id": "S09",
+      "group": "responsive",
+      "desc": "the screen does not overflow a 390px viewport",
+      "passed": true,
+      "detail": "SKIPPED: viewport emulation does not reflow layout in this browser build (innerWidth=390, scrollWidth=1920); responsive behaviour was not verifiable here"
+    }
+  ],
+  "categories": {
+    "functional": [
+      1.0,
+      "6/6 checks"
+    ],
+    "security": [
+      1.0,
+      "1/1 checks"
+    ],
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'notes.md', 'README.md']"
+    ],
+    "testing": [
+      1.0,
+      "2 test file(s) added, suite green"
+    ],
+    "maintainability": [
+      1.0,
+      "6 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": false
+}

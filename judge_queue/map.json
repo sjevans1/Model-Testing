@@ -1,8 +1,28 @@
 {
+  "0152258103fc": {
+    "file": "T1__gpt-6-luna.txt",
+    "label": "gpt-6-luna",
+    "task": "T1"
+  },
+  "16cd0216682d": {
+    "file": "T1__deepseek-v4.1-flash.txt",
+    "label": "deepseek-v4.1-flash",
+    "task": "T1"
+  },
+  "58b3ed7baa31": {
+    "file": "T7__haiku-5.5.txt",
+    "label": "haiku-5.5",
+    "task": "T7"
+  },
   "9cf3b2e225f8": {
     "file": "T2__haiku-5.5.txt",
     "label": "haiku-5.5",
     "task": "T2"
+  },
+  "a48c32c332e2": {
+    "file": "T7__deepseek-v4.1-flash.txt",
+    "label": "deepseek-v4.1-flash",
+    "task": "T7"
   },
   "b05cecdf7864": {
     "file": "T2__gpt-6-luna.txt",
@@ -13,5 +33,15 @@
     "file": "T2__deepseek-v4.1-flash.txt",
     "label": "deepseek-v4.1-flash",
     "task": "T2"
+  },
+  "eafb76cfc7ae": {
+    "file": "T7__gpt-6-luna.txt",
+    "label": "gpt-6-luna",
+    "task": "T7"
+  },
+  "ec62018ef342": {
+    "file": "T1__haiku-5.5.txt",
+    "label": "haiku-5.5",
+    "task": "T1"
   }
 }

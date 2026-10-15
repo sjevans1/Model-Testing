@@ -1,0 +1,57 @@
+{
+  "task": "T8",
+  "model": "claude-haiku-5-5",
+  "label": "haiku-5.5",
+  "workdir": "/home/sjeva/bench/model-testing/runs/b/T8/haiku-5.5",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "M1",
+      "group": "functional",
+      "passed": true,
+      "detail": "candidate suite fails on the shipped implementation (52 tests)"
+    },
+    {
+      "id": "M2",
+      "group": "functional",
+      "passed": true,
+      "detail": "candidate suite passes when a correct implementation is dropped in"
+    },
+    {
+      "id": "M3",
+      "group": "security",
+      "passed": true,
+      "detail": "5/5 claim areas referenced by the added tests"
+    }
+  ],
+  "categories": {
+    "functional": [
+      1.0,
+      "two-sided mutation result"
+    ],
+    "security": [
+      1.0,
+      "5/5 claim areas covered"
+    ],
+    "instruction": [
+      0.0,
+      "tests/test_smoke.py was modified"
+    ],
+    "testing": [
+      0.75,
+      "5 test file(s) added, suite not green"
+    ],
+    "maintainability": [
+      0.0,
+      "262 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": false,
+  "two_sided": {
+    "fails_on_shipped": true,
+    "passes_on_fixed": true,
+    "tests_ran": 52,
+    "notes": ""
+  }
+}

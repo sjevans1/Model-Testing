@@ -1,5 +1,119 @@
 [
   {
+    "task": "T1",
+    "task_area": "planning",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "completed",
+    "elapsed_s": 284.9,
+    "metered_usd": 0.033244,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 36619,
+    "output_tokens": 17320,
+    "cache_read_tokens": 245760,
+    "cache_write_tokens": 0,
+    "api_calls": 11,
+    "overall": 77.1,
+    "raw_overall": 77.1,
+    "categories": {
+      "instruction": 55.0,
+      "testing": 36.0,
+      "maintainability": 60.0,
+      "functional": 92.0,
+      "security": 91.0,
+      "efficiency": 86.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 17,
+    "checks_total": 17,
+    "files_touched": 6,
+    "deliverables": [
+      "FACTS.md",
+      "plan-assumptions.md",
+      "plan.md"
+    ],
+    "efficiency_relative": 22.0
+  },
+  {
+    "task": "T1",
+    "task_area": "planning",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 100.7,
+    "metered_usd": 0.007633,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 21,
+    "output_tokens": 7082,
+    "cache_read_tokens": 86132,
+    "cache_write_tokens": 25826,
+    "api_calls": 7,
+    "overall": 91.8,
+    "raw_overall": 91.8,
+    "categories": {
+      "instruction": 95.0,
+      "testing": 89.0,
+      "maintainability": 86.0,
+      "functional": 92.0,
+      "security": 94.0,
+      "efficiency": 87.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 17,
+    "checks_total": 17,
+    "files_touched": 6,
+    "deliverables": [
+      "FACTS.md",
+      "plan-assumptions.md",
+      "plan.md"
+    ],
+    "efficiency_relative": 79.7
+  },
+  {
+    "task": "T1",
+    "task_area": "planning",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 59.9,
+    "metered_usd": 0.007727,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 8,
+    "output_tokens": 11013,
+    "cache_read_tokens": 50118,
+    "cache_write_tokens": 13751,
+    "api_calls": 3,
+    "overall": 89.7,
+    "raw_overall": 89.7,
+    "categories": {
+      "instruction": 87.0,
+      "testing": 90.0,
+      "maintainability": 89.0,
+      "functional": 90.0,
+      "security": 92.0,
+      "efficiency": 85.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 17,
+    "checks_total": 17,
+    "files_touched": 6,
+    "deliverables": [
+      "FACTS.md",
+      "plan-assumptions.md",
+      "plan.md"
+    ],
+    "efficiency_relative": 99.4
+  },
+  {
     "task": "T2",
     "task_area": "framing",
     "label": "deepseek-v4.1-flash",
@@ -27,6 +141,7 @@
       "efficiency"
     ],
     "critical_failures": [],
+    "adjudications": [],
     "checks_passed": 14,
     "checks_total": 14,
     "files_touched": 6,
@@ -35,7 +150,7 @@
       "evidence.md",
       "work-package.md"
     ],
-    "efficiency_relative": 45.8
+    "efficiency_relative": 12.1
   },
   {
     "task": "T2",
@@ -52,20 +167,19 @@
     "cache_read_tokens": 123740,
     "cache_write_tokens": 22496,
     "api_calls": 9,
-    "overall": null,
-    "raw_overall": 82.2,
+    "overall": 89.0,
+    "raw_overall": 89.0,
     "categories": {
-      "instruction": 70.0,
-      "testing": 90.0,
-      "maintainability": 75.0,
-      "functional": 78.0,
-      "security": 94.0,
-      "efficiency": 88.0
+      "instruction": 91.0,
+      "testing": 84.0,
+      "maintainability": 91.0,
+      "functional": 87.0,
+      "security": 92.0,
+      "efficiency": 89.0
     },
     "redistributed": [],
-    "critical_failures": [
-      "evaluator: contradicting the brief's hard constraints: 400 for ValidationError and NotFound must remain unchanged, but the package maps not-found to 404 and encodes it in test_post_role_not_found_returns_404"
-    ],
+    "critical_failures": [],
+    "adjudications": [],
     "checks_passed": 13,
     "checks_total": 14,
     "files_touched": 6,
@@ -73,7 +187,8 @@
       "README.md",
       "evidence.md",
       "work-package.md"
-    ]
+    ],
+    "efficiency_relative": 100.0
   },
   {
     "task": "T2",
@@ -90,18 +205,19 @@
     "cache_read_tokens": 204377,
     "cache_write_tokens": 39171,
     "api_calls": 9,
-    "overall": 91.4,
-    "raw_overall": 91.4,
+    "overall": 90.7,
+    "raw_overall": 90.7,
     "categories": {
-      "instruction": 95.0,
-      "testing": 91.0,
-      "maintainability": 96.0,
+      "instruction": 94.0,
+      "testing": 90.0,
+      "maintainability": 93.0,
       "functional": 92.0,
       "security": 88.0,
-      "efficiency": 85.0
+      "efficiency": 82.0
     },
     "redistributed": [],
     "critical_failures": [],
+    "adjudications": [],
     "checks_passed": 14,
     "checks_total": 14,
     "files_touched": 6,
@@ -110,6 +226,696 @@
       "evidence.md",
       "work-package.md"
     ],
+    "efficiency_relative": 38.3
+  },
+  {
+    "task": "T3",
+    "task_area": "backend",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "completed",
+    "elapsed_s": 118.5,
+    "metered_usd": 0.04709,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 79999,
+    "output_tokens": 17843,
+    "cache_read_tokens": 279808,
+    "cache_write_tokens": 0,
+    "api_calls": 12,
+    "overall": 96.8,
+    "raw_overall": 96.8,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 70.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 7,
+    "deliverables": [
+      "README.md",
+      "notes.md"
+    ],
+    "efficiency_relative": 55.6
+  },
+  {
+    "task": "T3",
+    "task_area": "backend",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 126.6,
+    "metered_usd": 0.024644,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 51,
+    "output_tokens": 10793,
+    "cache_read_tokens": 410526,
+    "cache_write_tokens": 33313,
+    "api_calls": 17,
+    "overall": 96.8,
+    "raw_overall": 96.8,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 70.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 7,
+    "deliverables": [
+      "README.md",
+      "notes.md"
+    ],
+    "efficiency_relative": 77.6
+  },
+  {
+    "task": "T3",
+    "task_area": "backend",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 69.8,
+    "metered_usd": 0.07493,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 18,
+    "output_tokens": 15528,
+    "cache_read_tokens": 194285,
+    "cache_write_tokens": 42219,
+    "api_calls": 8,
+    "overall": 96.8,
+    "raw_overall": 96.8,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 70.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 7,
+    "deliverables": [
+      "README.md",
+      "notes.md"
+    ],
+    "efficiency_relative": 66.4
+  },
+  {
+    "task": "T4",
+    "task_area": "frontend",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "failed",
+    "elapsed_s": 600.1,
+    "metered_usd": 0.0,
+    "attempt": 2,
+    "substituted": false,
+    "input_tokens": null,
+    "output_tokens": null,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "api_calls": null,
+    "overall": 100.0,
+    "raw_overall": 100.0,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 100.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 9,
+    "checks_total": 9,
+    "files_touched": 11,
+    "deliverables": [
+      "README.md",
+      "screenshot.png"
+    ],
+    "efficiency_relative": 78.8
+  },
+  {
+    "task": "T4",
+    "task_area": "frontend",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 464.8,
+    "metered_usd": 0.055644,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 120,
+    "output_tokens": 20784,
+    "cache_read_tokens": 1358020,
+    "cache_write_tokens": 51486,
+    "api_calls": 40,
+    "overall": 67.9,
+    "raw_overall": 67.9,
+    "categories": {
+      "functional": 100.0,
+      "security": 0.0,
+      "instruction": 100.0,
+      "testing": 45.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [
+      "S04 failed on the frozen DOM contract: the confirmation control carries data-confirm=\"no\" before confirming instead of \"yes\". An independent probe (task-evidence/t4-luna-confirm-probe.txt) shows the behaviour is correct: applying an admin change without confirming writes nothing, and confirming then applying writes exactly one admin change. Contract miss, not a privilege-escalation miss."
+    ],
+    "checks_passed": 8,
+    "checks_total": 9,
+    "files_touched": 9,
+    "deliverables": [
+      "README.md",
+      "notes.md"
+    ],
+    "efficiency_relative": 87.2
+  },
+  {
+    "task": "T4",
+    "task_area": "frontend",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "failed",
+    "elapsed_s": 345.9,
+    "metered_usd": 0.0,
+    "attempt": 2,
+    "substituted": false,
+    "input_tokens": null,
+    "output_tokens": null,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "api_calls": null,
+    "overall": 100.0,
+    "raw_overall": 100.0,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 100.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 9,
+    "checks_total": 9,
+    "files_touched": 8,
+    "deliverables": [
+      "README.md",
+      "notes.md"
+    ],
     "efficiency_relative": 100.0
+  },
+  {
+    "task": "T5",
+    "task_area": "security",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "completed",
+    "elapsed_s": 368.3,
+    "metered_usd": 0.115423,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 100106,
+    "output_tokens": 60708,
+    "cache_read_tokens": 2090240,
+    "cache_write_tokens": 0,
+    "api_calls": 34,
+    "overall": 96.8,
+    "raw_overall": 96.8,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 70.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 8,
+    "deliverables": [
+      "CLAIMS.md",
+      "README.md",
+      "findings.md"
+    ],
+    "efficiency_relative": 41.2
+  },
+  {
+    "task": "T5",
+    "task_area": "security",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 218.2,
+    "metered_usd": 0.034354,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 57,
+    "output_tokens": 16970,
+    "cache_read_tokens": 519120,
+    "cache_write_tokens": 44932,
+    "api_calls": 19,
+    "overall": 96.8,
+    "raw_overall": 96.8,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 70.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 8,
+    "deliverables": [
+      "CLAIMS.md",
+      "README.md",
+      "findings.md"
+    ],
+    "efficiency_relative": 94.4
+  },
+  {
+    "task": "T5",
+    "task_area": "security",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 193.6,
+    "metered_usd": 0.165966,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 36,
+    "output_tokens": 39514,
+    "cache_read_tokens": 653235,
+    "cache_write_tokens": 55202,
+    "api_calls": 17,
+    "overall": 96.8,
+    "raw_overall": 96.8,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 70.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 8,
+    "deliverables": [
+      "CLAIMS.md",
+      "README.md",
+      "findings.md"
+    ],
+    "efficiency_relative": 60.3
+  },
+  {
+    "task": "T6",
+    "task_area": "ci",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "completed",
+    "elapsed_s": 525.4,
+    "metered_usd": 0.090534,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 120825,
+    "output_tokens": 42244,
+    "cache_read_tokens": 598876,
+    "cache_write_tokens": 0,
+    "api_calls": 17,
+    "overall": 94.7,
+    "raw_overall": 94.7,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "testing": 50.0,
+      "instruction": 100.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 6,
+    "checks_total": 6,
+    "files_touched": 12,
+    "deliverables": [
+      "README.md",
+      "root-cause.md"
+    ],
+    "efficiency_relative": 27.8
+  },
+  {
+    "task": "T6",
+    "task_area": "ci",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 249.3,
+    "metered_usd": 0.030752,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 60,
+    "output_tokens": 15134,
+    "cache_read_tokens": 495980,
+    "cache_write_tokens": 37879,
+    "api_calls": 20,
+    "overall": 94.7,
+    "raw_overall": 94.7,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "testing": 50.0,
+      "instruction": 100.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 6,
+    "checks_total": 6,
+    "files_touched": 12,
+    "deliverables": [
+      "README.md",
+      "root-cause.md"
+    ],
+    "efficiency_relative": 72.8
+  },
+  {
+    "task": "T6",
+    "task_area": "ci",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 113.7,
+    "metered_usd": 0.069834,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 18,
+    "output_tokens": 15449,
+    "cache_read_tokens": 178794,
+    "cache_write_tokens": 35620,
+    "api_calls": 8,
+    "overall": 76.3,
+    "raw_overall": 76.3,
+    "categories": {
+      "functional": 50.0,
+      "security": 100.0,
+      "testing": 50.0,
+      "instruction": 100.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 5,
+    "checks_total": 6,
+    "files_touched": 12,
+    "deliverables": [
+      "README.md",
+      "root-cause.md"
+    ],
+    "efficiency_relative": 72.0
+  },
+  {
+    "task": "T7",
+    "task_area": "review",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "completed",
+    "elapsed_s": 205.6,
+    "metered_usd": 0.060375,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 57769,
+    "output_tokens": 33168,
+    "cache_read_tokens": 540416,
+    "cache_write_tokens": 0,
+    "api_calls": 18,
+    "overall": 96.4,
+    "raw_overall": 96.4,
+    "categories": {
+      "instruction": 98.0,
+      "testing": 95.0,
+      "maintainability": 96.0,
+      "functional": 97.0,
+      "security": 96.0,
+      "efficiency": 93.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 11,
+    "checks_total": 12,
+    "files_touched": 5,
+    "deliverables": [
+      "review.md"
+    ],
+    "efficiency_relative": 25.0
+  },
+  {
+    "task": "T7",
+    "task_area": "review",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 113.9,
+    "metered_usd": 0.010523,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 33,
+    "output_tokens": 9192,
+    "cache_read_tokens": 220762,
+    "cache_write_tokens": 29726,
+    "api_calls": 11,
+    "overall": 91.7,
+    "raw_overall": 91.7,
+    "categories": {
+      "instruction": 95.0,
+      "testing": 94.0,
+      "maintainability": 92.0,
+      "functional": 88.0,
+      "security": 93.0,
+      "efficiency": 95.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 10,
+    "checks_total": 12,
+    "files_touched": 5,
+    "deliverables": [
+      "review.md"
+    ],
+    "efficiency_relative": 79.4
+  },
+  {
+    "task": "T7",
+    "task_area": "review",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 67.0,
+    "metered_usd": 0.051674,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 16,
+    "output_tokens": 12486,
+    "cache_read_tokens": 164225,
+    "cache_write_tokens": 19584,
+    "api_calls": 7,
+    "overall": 93.8,
+    "raw_overall": 93.8,
+    "categories": {
+      "instruction": 96.0,
+      "testing": 96.0,
+      "maintainability": 92.0,
+      "functional": 94.0,
+      "security": 92.0,
+      "efficiency": 94.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 11,
+    "checks_total": 12,
+    "files_touched": 5,
+    "deliverables": [
+      "review.md"
+    ],
+    "efficiency_relative": 60.2
+  },
+  {
+    "task": "T8",
+    "task_area": "testing",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "terminated_after_deliverables",
+    "elapsed_s": 600.1,
+    "metered_usd": 0.0,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": null,
+    "output_tokens": null,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "api_calls": null,
+    "overall": 78.9,
+    "raw_overall": 78.9,
+    "categories": {
+      "functional": 50.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 75.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [
+      "Two assertions encode policy the task never fixed (revoked reports must remain in the listing, and only an admin may revoke). Defect-sensitive suite; fails the pass-on-correct half only."
+    ],
+    "checks_passed": 2,
+    "checks_total": 3,
+    "files_touched": 12,
+    "deliverables": [
+      "CLAIMS.md",
+      "README.md",
+      "test-plan.md"
+    ],
+    "efficiency_relative": 69.6
+  },
+  {
+    "task": "T8",
+    "task_area": "testing",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 234.8,
+    "metered_usd": 0.051347,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 90,
+    "output_tokens": 15872,
+    "cache_read_tokens": 1166416,
+    "cache_write_tokens": 64385,
+    "api_calls": 30,
+    "overall": 75.8,
+    "raw_overall": 75.8,
+    "categories": {
+      "functional": 50.0,
+      "security": 100.0,
+      "instruction": 100.0,
+      "testing": 45.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [
+      "Two assertions encode policy the task never fixed (a save_batch status string of \"failed\", and refusal of an owning analyst revoking). The suite is defect-sensitive; it is the second half of the two-sided check that fails."
+    ],
+    "checks_passed": 2,
+    "checks_total": 3,
+    "files_touched": 6,
+    "deliverables": [
+      "CLAIMS.md",
+      "README.md",
+      "test-plan.md"
+    ],
+    "efficiency_relative": 100.0
+  },
+  {
+    "task": "T8",
+    "task_area": "testing",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 484.7,
+    "metered_usd": 0.403335,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 80,
+    "output_tokens": 99600,
+    "cache_read_tokens": 2044050,
+    "cache_write_tokens": 83348,
+    "api_calls": 39,
+    "overall": 71.1,
+    "raw_overall": 71.1,
+    "categories": {
+      "functional": 100.0,
+      "security": 100.0,
+      "instruction": 0.0,
+      "testing": 75.0,
+      "maintainability": 0.0
+    },
+    "redistributed": [
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "adjudications": [],
+    "checks_passed": 3,
+    "checks_total": 3,
+    "files_touched": 266,
+    "deliverables": [
+      "CLAIMS.md",
+      "README.md",
+      "test-plan.md"
+    ],
+    "efficiency_relative": 30.6
   }
 ]

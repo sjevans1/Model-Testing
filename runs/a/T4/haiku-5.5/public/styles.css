@@ -13,7 +13,26 @@ th, td { text-align: left; padding: .625rem .75rem; border-bottom: 1px solid #e3
 select { font: inherit; padding: .25rem .5rem; }
 #status { color: #1c7a3e; min-height: 1.25rem; }
 #error { color: #b3261e; min-height: 1.25rem; }
+button { font: inherit; padding: .25rem .75rem; border: 1px solid #55606d; border-radius: 4px;
+  background: #fff; color: #17202a; cursor: pointer; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+button:focus-visible, select:focus-visible { outline: 2px solid #1f5fbf; outline-offset: 2px; }
+#users-table tr.staged td { background: #fff8e1; }
+.pending { color: #8a5a00; font-weight: 600; margin: 0 0 .25rem; }
+.loading { color: #1f5fbf; margin: 0 0 .25rem; }
+.confirm { border: 1px solid #b3261e; border-radius: 4px; padding: .5rem; margin-bottom: .5rem;
+  background: #fdecea; }
+.confirm-text { margin: 0 0 .5rem; }
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+.actions { min-width: 12rem; }
 @media (max-width: 480px) {
   .wrap { padding: 1rem .75rem 3rem; }
   th, td { padding: .5rem; }
+  /* Stack each table row as a block so nothing forces a horizontal scroll at 390px. */
+  #users-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #users-table, #users-table tbody, #users-table tr, #users-table td { display: block; width: 100%; }
+  #users-table tr { border-bottom: 1px solid #e3e6ea; padding: .5rem 0; }
+  #users-table td { border-bottom: none; padding: .25rem .5rem; }
+  #users-table td[data-label]::before { content: attr(data-label) ": "; color: #55606d; }
+  .actions { min-width: 0; }
 }

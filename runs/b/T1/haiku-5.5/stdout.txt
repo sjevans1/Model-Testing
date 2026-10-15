@@ -1,0 +1,11 @@
+Both deliverables are written in `/home/sjeva/bench/model-testing/runs/b/T1/haiku-5.5/`:
+
+- `plan.md` (about 3,265 words) covers all twelve required areas. Each item is tagged [EXISTS], [EXTEND], [CONFIG], [NEW] or [ASSUMPTION], and it cites FACTS.md for what exists. The three administration planes are kept separate throughout. Section 12 summarises the work classification.
+- `plan-assumptions.md` lists 22 assumptions (A-1 to A-22).
+
+Known gaps in what I produced:
+- I did not check any code. The sandbox contains only FACTS.md and BRIEF.md, so statements about the audit table's grants, the REST connector's refactorability and Keycloak mappings are unverified and flagged as assumptions (A-16, A-17, A-18).
+- Some assumptions are not cross-referenced from plan.md. A-16 to A-22 are listed but not linked from the plan text, and A-20 (backup expiry under the 30-day deletion rule) is a real open question.
+- Section 1.1 treats tenant records as existing, which is inferred from "multi-tenant SaaS" rather than stated in FACTS.md.
+- The latency, availability and work-package sizing numbers are placeholders, labelled as such.
+- No code was written and no tests were run, as the brief requires.

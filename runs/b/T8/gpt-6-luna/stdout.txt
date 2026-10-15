@@ -1,0 +1,3 @@
+Added `tests/test_saved_reports.py` and `test-plan.md`. The tests cover authorization, tenant isolation, role changes, revocation and snapshot immutability, duplicate and concurrent saves, and accurate batch results. `src/` and `tests/test_smoke.py` were not edited.
+
+Verification: `PYTHONPATH=src python3 -m unittest discover -s tests` ran 16 tests and failed 25 assertions against the shipped implementation. That red result exposes its seeded defects; the smoke test and round-trip, snapshot, duplicate-save, and concurrent-save checks passed. The test plan records the observed failures and known coverage gaps.

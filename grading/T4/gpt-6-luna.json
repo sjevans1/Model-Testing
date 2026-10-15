@@ -1,0 +1,96 @@
+{
+  "task": "T4",
+  "model": "gpt-6-luna",
+  "label": "gpt-6-luna",
+  "workdir": "/home/sjeva/bench/model-testing/runs/a/T4/gpt-6-luna",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "S01",
+      "group": "functional",
+      "desc": "changing the dropdown stages the change and writes nothing",
+      "passed": true,
+      "detail": "no write on stage, #pending-u1 visible, save+cancel present"
+    },
+    {
+      "id": "S02",
+      "group": "functional",
+      "desc": "the explicit apply control writes exactly once and reports success",
+      "passed": true,
+      "detail": "one write, status='access level saved.'"
+    },
+    {
+      "id": "S03",
+      "group": "functional",
+      "desc": "discard reverts the staged value and writes nothing",
+      "passed": true,
+      "detail": "discard reverted the select and wrote nothing"
+    },
+    {
+      "id": "S04",
+      "group": "security",
+      "desc": "a privilege-sensitive change requires an explicit confirmation first",
+      "passed": false,
+      "detail": "AssertionError: #confirm-u1 has no [data-confirm=\"yes\"] control (a staged change that grants or removes 'admin' must be confirmed through an in-page control carrying data-confirm=\"yes\" inside #confirm-<id>)"
+    },
+    {
+      "id": "S05",
+      "group": "functional",
+      "desc": "in-flight submission shows a loading state and blocks duplicate submits",
+      "passed": true,
+      "detail": "loading shown, apply disabled, exactly one write"
+    },
+    {
+      "id": "S06",
+      "group": "functional",
+      "desc": "a failed submission shows an error, never a success claim",
+      "passed": true,
+      "detail": "error shown ('Could not save the change (HTTP 500). Your change is still pending; try again.'), no success claim"
+    },
+    {
+      "id": "S07",
+      "group": "functional",
+      "desc": "a stale-version conflict is surfaced, not silently swallowed",
+      "passed": true,
+      "detail": "conflict surfaced: 'This user was changed elsewhere (stale version). Your change is still pending; refresh the user data before applying it again.'"
+    },
+    {
+      "id": "S08",
+      "group": "a11y",
+      "desc": "the controls have accessible names and the live regions are labelled",
+      "passed": true,
+      "detail": "select + apply control + live regions labelled"
+    },
+    {
+      "id": "S09",
+      "group": "responsive",
+      "desc": "the screen does not overflow a 390px viewport",
+      "passed": true,
+      "detail": "SKIPPED: viewport emulation does not reflow layout in this browser build (innerWidth=390, scrollWidth=1920); responsive behaviour was not verifiable here"
+    }
+  ],
+  "categories": {
+    "functional": [
+      1.0,
+      "6/6 checks"
+    ],
+    "security": [
+      0.0,
+      "0/1 checks"
+    ],
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'notes.md', 'README.md']"
+    ],
+    "testing": [
+      0.45,
+      "1 test file(s) added, suite not green"
+    ],
+    "maintainability": [
+      1.0,
+      "5 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": false
+}

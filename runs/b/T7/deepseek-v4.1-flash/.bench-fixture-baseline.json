@@ -1,0 +1,8 @@
+{
+ "BRIEF.md": "a322ded5f8cbdddb",
+ "pr.diff": "b27b1754cd1925c4",
+ "pr.patch": "f1fc76df0b098598",
+ "sources/README.md": "845939dbca82f8b7",
+ "sources/src/roleservice.py": "b88d2994ab3c2020",
+ "sources/tests/test_roleservice.py": "ac0d5e26da74aa28"
+}

@@ -1,0 +1,24 @@
+Done. All deliverables are in `/home/sjeva/bench/model-testing/runs/b/T5/deepseek-v4.1-flash`.
+
+**Defects fixed (9, one entry each in `findings.md`)**
+
+- D1 `get_report` had no tenant scope → `require_tenant` (foreign id becomes the same `NotFound("no such object")` as a missing one).
+- D2 `revoke_report` was exists-by-id only → tenant scope + owner-or-tenant-admin (`service.py:230-236`).
+- D3 classification ignored on read → `may_read_classification` gate before the snapshot.
+- D4 `authz.require_role` skipped the comparison entirely for unrecognised roles (fail-open) → refuses any role not in `ROLE_LEVEL` first.
+- D5 tenant came from `payload["tenant_id"]` → tenant and owner now come from `actor`.
+- D6 `list_reports` returned every tenant's rows with `revoked: False` hard-coded → tenant-scoped query, classification filter, truthful revoked flag.
+- D7 (unlabelled in the source, found by diffing against the reference `DatasetRegistry.save_dataset`) `save_report` never called `_validate_classification` and had no role gate → validation + `require_role(analyst)`, plus admin for `confidential`.
+- D8 `save_batch` swallowed failures and returned `applied=len(items)`, `status="complete"` → counts what was actually saved; `complete` only when all items saved.
+- D9 `may_read_classification` returned `True` for everything non-`confidential` regardless of role → fails closed on both an unrecognised role and an unrecognised classification.
+
+All fixes use the existing `authz.py` primitives; no second authorization path, signatures unchanged, `test_smoke.py` untouched.
+
+**Verification (real output)**
+
+- Shipped source, byte-identical copy (sha256 of `service.py`/`authz.py` match `.bench-fixture-baseline.json`), with the new suite: `Ran 40 tests … FAILED (failures=55)` — 25 distinct negative tests fail. Reproduction tree at `/home/sjeva/bench/model-testing/hermes-home/cache/scratch/shipped_tree`.
+- Corrected tree: `sh run_checks.sh` → `Ran 40 tests in 0.020s / OK`.
+- Extra adversarial probe (39 checks: cross-tenant confidential reads, refused-revoke side effects, rogue/trailing-space/`None` roles, batch truth, dataset-feature regression): 39/39 pass.
+- Fixture hashes re-checked: only `src/reportcore/authz.py`, `src/reportcore/service.py` changed; README/CLAIMS/BRIEF/run_checks/`__init__`/errors/models/store/`test_smoke.py` all match baseline.
+
+**Two judgement calls worth flagging** (documented in findings.md): `save_report` requires `analyst`, mirroring `DatasetRegistry.save_dataset`; and `list_reports` denies an unrecognised role by returning nothing (the shape the reference feature uses) rather than raising — reads deny per object, mutations refuse outright and `save_batch` reports "nothing saved, partial".

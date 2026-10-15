@@ -1,0 +1,5 @@
+Implemented the SavedReportsService authorization fixes and added `findings.md` with evidence, impact, fixes, and test coverage for each defect.
+
+Added tenant isolation for reads, listings, and revocation; owner/admin-only revocation; actor-derived tenant and owner; confidential-report restrictions; fail-closed role checks; and truthful batch counts and statuses. Audit coverage is tested.
+
+Verification: `sh run_checks.sh` passed all 9 tests. `python3 -m py_compile src/reportcore/service.py src/reportcore/authz.py tests/test_saved_reports_authz.py` also passed.

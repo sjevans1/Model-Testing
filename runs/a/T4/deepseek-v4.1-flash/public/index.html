@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users and access</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Users and access</h1>
+    <p class="lede">Change a user's access level. A change is staged locally until you apply it;
+      privilege changes need an explicit confirmation. Applied changes are recorded in the audit log.</p>
+
+    <div class="table-wrap">
+      <table id="users-table">
+        <caption class="visually-hidden">Users, their current access level, and the controls to change it</caption>
+        <thead>
+          <tr>
+            <th scope="col">Email</th>
+            <th scope="col">Access level</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <p id="status" role="status" aria-live="polite"></p>
+    <p id="error" role="alert" aria-live="assertive"></p>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

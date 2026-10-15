@@ -1,0 +1,3 @@
+Implemented the staged role-change flow in `public/app.js`, responsive styling in `public/styles.css`, and the error live region in `public/index.html`. Added the Lightpanda browser test at `tests/browser_test.mjs`; test command and output are recorded in `notes.md`.
+
+Verified: `sh run_checks.sh` passed, including staging/discard, admin confirmations, loading and duplicate-submit protection, HTTP 500 and 409 handling, and accessibility checks. At 390px, the test verifies the compact layout and its width/wrapping safeguards. Lightpanda’s scroll-width metrics were unreliable, so a physical overflow measurement remains unverified.

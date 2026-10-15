@@ -1,0 +1,15 @@
+haiku-5.5                14/14 checks pass
+gpt-6-luna               14/14 checks pass
+deepseek-v4.1-flash      14/14 checks pass
+=== T5 / haiku-5.5 (security + isolation, 8 seeded defects) ===
+PASS  A14  [revocation]  revoked report is not listed
+
+14/14 checks pass
+=== T5 / gpt-6-luna (security + isolation, 8 seeded defects) ===
+PASS  A14  [revocation]  listed but marked revoked via revoked=True
+
+14/14 checks pass
+=== T5 / deepseek-v4.1-flash (security + isolation, 8 seeded defects) ===
+PASS  A14  [revocation]  listed but marked revoked via revoked=True
+
+14/14 checks pass

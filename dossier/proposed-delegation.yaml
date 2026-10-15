@@ -1,0 +1,29 @@
+# PROPOSED delegation map for BENCH-MODEL-001.
+#
+# STATUS: INACTIVE. Nothing here has been applied. No routing configuration was
+# changed by this benchmark; the user and Sol decide whether any of it is adopted.
+active: false
+generated_from: dossier/decision-matrix.md
+proposed_roles:
+  - role: '1. Requirements analysis'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+  - role: '2. Architecture and work-package framing'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+  - role: '3. Backend implementation'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+  - role: '4. Frontend / UI implementation'
+    qualified: ['Claude Haiku 5.5', 'DeepSeek V4.1 Flash']
+  - role: '5. Security-sensitive implementation'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+  - role: '6. CI failure diagnosis and repair'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+  - role: '7. Independent code review'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+  - role: '8. Testing and acceptance engineering'
+    qualified: ['Claude Haiku 5.5']
+  - role: '9. Documentation and handoff drafting'
+    qualified: ['Claude Haiku 5.5', 'GPT-6 Luna', 'DeepSeek V4.1 Flash']
+
+# Not proposed: any change to the current supervisor/implementer/reviewer split,
+# any production model assignment, and any merge, release or deploy authority.
+# GLM-5.3 Flash remains in its current role pending a separate direct comparison.

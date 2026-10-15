@@ -1,0 +1,17 @@
+`review.md` is on disk at `/home/sjeva/bench/model-testing/runs/b/T7/deepseek-v4.1-flash/review.md`. Diff, `pr.patch`, `sources/` and `BRIEF.md` all hash-verify unchanged against `.bench-fixture-baseline.json` (the baseline algorithm is sha256[:16]); probes ran in the scratch dir on copies.
+
+What the review found, all reproduced at runtime rather than read off the page:
+
+Blocking (8) — every one of the four contract invariants is broken by code in this diff
+- `request_role_change` lost the `actor["role"] != "admin"` guard (`sources/src/roleservice.py:36-42`, `pr.diff` L56-57) and the `requested_role not in ROLES` whitelist (L54-55); `ROLES` is now dead and no `raise Forbidden`/`raise ValidationError` remains anywhere in the module.
+- `approve` applies with no tenant predicate and no audit row (`:50-55`) — the `UPDATE` is an unchanged context line, so I attribute it as pre-existing but report it blocking because the diff deletes the test that documented it.
+- New `change_role_direct` (`:61-65`) and `apply_bulk` (`:67-74`): accept `actor`, never read it; no admin check, no tenant scoping, no validation, no audit. Probes wrote `admin` to `u2` in tenant `t2` from an admin of `t1`, and `actor=None` still wrote successfully.
+- `list_pending` (`:57-59`) returns every tenant's pending requests to any caller.
+- No replay guard: `approve` re-applied on replay (`version` 2→3), `apply_bulk` re-reports `applied:1 status:complete`.
+- All three deleted tests fail against the post-PR code (`Forbidden not raised`, `ValidationError not raised`, `'admin' != 'viewer'`, exit 1) — and the cross-tenant one was already failing pre-PR, so it was removed rather than fixed.
+
+Non-blocking (6) — `approve`'s lost `None` guard (`TypeError` on unknown id), false `applied`/`saved` success accounting (counts iterations, not `rowcount`), `apply_bulk` omitting `version = version + 1`, `apply_bulk` non-atomicity (mid-loop `KeyError` left a partial write that a later unrelated commit made durable), unused `actor` parameters/dead exception surface, unbounded `list_pending`.
+
+Explicitly rejected as legitimate (not called blockers): the `uuid4` id change — it fixes a real pre-existing bug, the old timestamp scheme raised `IntegrityError('UNIQUE constraint failed: role_requests.id')` on the second same-millisecond request, and it is *not* an idempotency regression since the old id was content-independent too; the `status` index; and the existence of the three new methods as features. Nine more rejected items, plus residual uncertainty (reverse-applied pre-PR reconstruction, no `version` reader in-tree, no HTTP layer to prove reachability, and my severity calibration on the two softer blockers) are in the report.
+
+Recommendation: **do not merge** — the diff removes authorization and validation controls along with the tests enforcing them, and adds three unguarded write/read paths.

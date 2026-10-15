@@ -1,0 +1,374 @@
+
+
+### review.md
+# Independent code review — `roleservice` PR (tenant role management)
+
+Reviewed artifact: `pr.diff` (identical to `pr.patch`), read in context against the post-PR tree in
+`sources/`. The diff and the code were not modified; `sources/`, `pr.diff`, `pr.patch` and `BRIEF.md`
+hash-verify unchanged against `.bench-fixture-baseline.json` (sha256[:16] of every entry still matches).
+
+Contract this PR must preserve (from the brief):
+(a) a role can only be changed inside the user's own tenant; (b) only administrators may change a role;
+(c) administrative actions are audited; (d) replaying the same action twice must not apply it twice.
+
+Verdict summary: the diff removes two authorization/input controls together with the tests that enforced
+them, and adds three new methods that accept an `actor` without ever reading it — no admin check, no tenant
+predicate, no audit row. All four contract invariants are violated by code in this diff. **Do not merge.**
+
+---
+
+## 1. Blocking findings
+
+### B1 — Authorization check deleted from the role-change entry point
+- **File / location:** `sources/src/roleservice.py:36–42` (`request_role_change`);
+  removed lines are `pr.diff` L56–57.
+- **Severity:** Critical.
+- **Why blocking:** Invariant (b). The removed guard was
+  `if actor["role"] != "admin": raise Forbidden("admins only")`. Nothing replaces it anywhere in the
+  module, so a non-admin actor can now create a role-change request, and `approve()` — which has no
+  authorization check either — applies it. This is a privilege-escalation path: any authenticated user
+  can drive themselves or anyone else to `admin`.
+- **Evidence:** `request_role_change(ANALYST, "u1", "admin")` returned `'rr-542742ac75c5'` instead of raising
+  `Forbidden` (probe P1). Running the PR-deleted test against the post-PR code:
+  `AssertionError: Forbidden not raised` (`test_non_admin_cannot_request`, exit status 1).
+- **Correction required:** restore the caller check (`if actor["role"] != "admin": raise Forbidden("admins only")`)
+  in `request_role_change`, and add the equivalent check to `approve`, `change_role_direct` and `apply_bulk`
+  (see B4, B5). Authorization must be enforced on the server path that mutates `users`, not only where the
+  request is created.
+
+### B2 — Role-value validation deleted
+- **File / location:** `sources/src/roleservice.py:36` (`request_role_change`);
+  removed lines are `pr.diff` L54–55.
+- **Severity:** High.
+- **Why blocking:** The removed guard was `if requested_role not in ROLES: raise ValidationError("bad role")`.
+  The `ROLES` tuple survives at `sources/src/roleservice.py:29` but is now referenced by nothing (grep: no
+  remaining use), i.e. the whitelist is dead code. An arbitrary string supplied by a caller is written
+  straight into the `role` column through `approve()`, and the new `change_role_direct`/`apply_bulk` write
+  it directly. Role strings flow into every downstream authorization decision, so an unrecognised value is
+  an authorization-relevant write, not just bad input.
+- **Evidence:** `request_role_change(ADMIN, "u1", "superuser")` returned a request id, and after `approve`
+  `users.role` for `u1` was `'superuser'` (probe P2). `change_role_direct(ADMIN, "u1", "root")` returned
+  `{'status': 'saved'}` and stored `root`. The deleted test fails against the current code:
+  `AssertionError: ValidationError not raised`.
+- **Correction required:** restore `if requested_role not in ROLES: raise ValidationError("bad role")`, and
+  validate `new_role` / every `change["role"]` in the new write paths against the same whitelist.
+
+### B3 — `approve()` applies a change with no tenant check and no audit of the apply
+- **File / location:** `sources/src/roleservice.py:50–55` (`approve`), specifically the update at line 52–53
+  (`pr.diff` L69–70) and the missing audit insert after line 54.
+- **Severity:** Critical.
+- **Why blocking:** Invariants (a) and (c). `UPDATE users SET role = ?, version = version + 1 WHERE id = ?`
+  has no tenant predicate, and the request row's `tenant_id` is the *requesting actor's* tenant
+  (`sources/src/roleservice.py:41` writes `actor["tenant_id"]`), never the target user's. So an
+  administrator of tenant `t1` can approve a request against a user in `t2`, and nothing on the path
+  compares the target user's tenant to the actor's. Separately, `approve` writes no `audit` row: only
+  `role.request` is audited, so the administrative act of *granting* the role — the one that changes
+  effective privileges — leaves no audit trail.
+- **Evidence:** probe P3c — `request_role_change(ADMIN_T1, "u2")` + `approve(ADMIN_T1, ...)` left
+  `u2` (tenant `t2`) with `role = 'admin'`. Probe P4c — after request+approve, the audit table contains
+  exactly one row, `('role.request', 'rr-90723bc2bd94')`, and nothing for the apply.
+- **Attribution (stated explicitly):** the `UPDATE users ...` line is an *unchanged context line* in the
+  diff, so this hole predates the PR. It is reported as blocking because the diff's own hunk deletes the
+  test that documented it (B8) without fixing it, and because this is the last gate before the change
+  reaches a product where tenant boundaries are contractual.
+- **Correction required:** resolve the target user's tenant and refuse the operation unless it equals
+  `actor["tenant_id"]` (or scope the mutation with `... WHERE id = ? AND tenant_id = ?` and verify
+  `rowcount == 1`); write an `audit` row for the apply (`role.approve` / `object_id = user_id`) in the same
+  transaction. Consider storing the *target user's* tenant on `role_requests` so the check is expressible.
+
+### B4 — New unguarded direct write path: `change_role_direct`
+- **File / location:** `sources/src/roleservice.py:61–65` (`pr.diff` L78–82).
+- **Severity:** Critical.
+- **Why blocking:** Invariants (a), (b), (c). It accepts `actor` and never reads it; there is no admin
+  check, no tenant predicate on the `UPDATE ... WHERE id = ?`, no `ROLES` validation, and no audit insert.
+  Any caller — including one passing `actor=None` — can set any user's role in any tenant.
+- **Evidence:** probe P3a — `change_role_direct(ADMIN_T1, "u2", "admin")` set `u2` (tenant `t2`) to `admin`.
+  Probe P3d — `change_role_direct(ANALYST_T1, "u1", "admin")` set a user to `admin` from a non-admin actor.
+  `change_role_direct(None, "u1", "admin")` returned `{'status': 'saved'}` and stored `admin`. Probe P4a —
+  audit table empty after the call (`audit rows = []`).
+- **Correction required:** delete the method, or make it enforce all four controls before the `UPDATE`:
+  admin check, target-tenant == actor-tenant, role ∈ `ROLES`, and an audit row in the same transaction.
+
+### B5 — New unguarded bulk write path: `apply_bulk`
+- **File / location:** `sources/src/roleservice.py:67–74` (`pr.diff` L84–91).
+- **Severity:** Critical.
+- **Why blocking:** Same four missing controls as B4 (invariants (a), (b), (c)), replicated per item in a
+  loop, so a single call can cross every tenant boundary in the deployment. Additionally it is the only
+  write path that does not bump `version` (see N3), so bulk changes are invisible to any version-based
+  consumer, and it reports `status: "complete"` unconditionally (see N2), so a caller cannot tell a
+  no-op from a success.
+- **Evidence:** probe P3b — `apply_bulk(ADMIN_T1, [{"user_id": "u2", "role": "admin"}])` set `u2` (tenant
+  `t2`) to `admin`. Probe P4b — `audit rows = []`. Probe P7 — for a non-existent user it returns
+  `{'applied': 1, 'total': 1, 'status': 'complete'}`.
+- **Correction required:** admin check, per-item tenant check against the target user's tenant, `ROLES`
+  validation, one audit row per applied change, `version = version + 1`, and an atomic transaction.
+
+### B6 — `list_pending` returns every tenant's requests to any caller
+- **File / location:** `sources/src/roleservice.py:57–59` (`pr.diff` L74–76).
+- **Severity:** High.
+- **Why blocking:** Invariants (a) and (b). The query filters on `status` only; `actor` is accepted and
+  never read. Pending role requests include `user_id`, `tenant_id` and `requested_role`, so this is
+  cross-tenant disclosure of other tenants' users *and* their pending privilege changes, to any caller.
+- **Evidence:** probe P8 — with one pending request in `t1` and one in `t2`, `list_pending(ANALYST_T1)`
+  returned both, including `('rr-cde2c8f6e4cb', 't2', 'u2', 'admin')`. `list_pending(None)` also executed
+  without error.
+- **Correction required:** add the admin check and scope the query:
+  `WHERE status = 'pending' AND tenant_id = ?` with `actor["tenant_id"]`.
+
+### B7 — No replay / idempotency control on any role-changing path
+- **File / location:** `sources/src/roleservice.py:50–55` (`approve`, no `status` guard);
+  `61–65`; `67–74`. Also `36–48` (`request_role_change`).
+- **Severity:** High.
+- **Why blocking:** Invariant (d). `approve` unconditionally runs
+  `UPDATE role_requests SET status = 'approved' WHERE id = ?` and unconditionally re-applies
+  `UPDATE users SET role = ?, version = version + 1 ...`, so a replayed approval applies the change a
+  second time (the `version` counter advances again) and nothing detects that the request was already
+  applied. The two new write paths have no idempotency concept at all — no client-supplied key, no
+  dedup on `(actor, user_id, role)` — and `apply_bulk` honestly re-reports `applied`/`complete` on a
+  bit-identical replay.
+- **Evidence:** probe P9a — after `approve` ran twice on the same request, `version` went `2 → 3`
+  (`{'role': 'analyst', 'version': 2}` then `{'role': 'analyst', 'version': 3}`), request `status`
+  `approved`, audit still 1 row. Probe P9b — replaying an identical `apply_bulk` returned
+  `{'applied': 1, 'total': 1, 'status': 'complete'}` again. Probe P9c — replaying
+  `request_role_change` produced two distinct pending requests (`rr-0799ed7a6727` / `rr-3a6b617a3e0e`),
+  so a retried client accumulates duplicate requests that each apply later.
+- **Attribution (stated explicitly):** the missing `status = 'pending'` guard in `approve` predates the PR
+  (the removed `row is None` check was a not-found guard, not an idempotency guard). It is reported as
+  blocking because (d) is an explicit product requirement, because the PR edits this exact function, and
+  because the PR adds three new paths with no replay protection at all.
+- **Correction required:** guard the state transition —
+  `UPDATE role_requests SET status = 'approved' WHERE id = ? AND status = 'pending'` and only apply the
+  role change when `cursor.rowcount == 1`; require and persist an idempotency key on
+  `change_role_direct`/`apply_bulk` and return the original result on replay.
+
+### B8 — The tests that enforced the contract were deleted
+- **File / location:** `sources/tests/test_roleservice.py` (deleted methods at `pr.diff` L123–131 and
+  L133–138; the `Forbidden`/`ValidationError` import removed at `pr.diff` L106–107; `ANALYST` removed at
+  L115).
+- **Severity:** Blocker (process).
+- **Why blocking:** Three tests were removed — `test_non_admin_cannot_request`,
+  `test_bad_role_is_rejected`, `test_cross_tenant_user_is_not_touched`. They are precisely the tests that
+  assert invariants (b), (a)/(b) and (a). All three fail against the post-PR source, which is the evidence
+  that they were removed to make the suite green rather than because they were obsolete:
+  ```
+  FAIL: test_non_admin_cannot_request        AssertionError: Forbidden not raised
+  FAIL: test_bad_role_is_rejected            AssertionError: ValidationError not raised
+  FAIL: test_cross_tenant_user_is_not_touched AssertionError: 'admin' != 'viewer'
+  Ran 4 tests ... FAILED (failures=3)      (exit status 1)
+  ```
+  Their replacement, `test_bulk_apply_reports_completion`, asserts the new unguarded behaviour by pinning
+  `status == "complete"` and `applied == 1` for a call that performs no authorization, no tenant check and
+  no audit. The suite therefore now *certifies* the regression.
+- **Correction required:** restore all three tests unmodified and make them pass by fixing the code
+  (B1–B6); do not re-point the import of `Forbidden`/`ValidationError` or re-introduce `ANALYST` as part of
+  new assertions instead of restored ones. A tenant-isolation test asserting that an admin of `t1` cannot
+  touch a user in `t2` must be present and green before this merges.
+
+---
+
+## 2. Non-blocking findings
+
+### N1 — `approve()` lost its not-found guard; unknown ids now crash
+- **File / location:** `sources/src/roleservice.py:51–53`; removed lines `pr.diff` L67–68.
+- **Severity:** Medium.
+- **Why it matters:** `row = ...fetchone()` can return `None`, and the next line subscripts it. A caller
+  passing an unknown or already-deleted request id gets an unhandled `TypeError` instead of the module's
+  documented `ValidationError` — a 500 instead of a 4xx, and it breaks the error contract the rest of the
+  service uses.
+- **Evidence:** probe P5 — `approve(ADMIN_T1, 'rr-does-not-exist')` raised
+  `TypeError: 'NoneType' object is not subscriptable`.
+- **Correction:** restore `if row is None: raise ValidationError("no such request")`.
+
+### N2 — False success reporting on both new write paths
+- **File / location:** `sources/src/roleservice.py:69–72` (`apply_bulk`) and `62–65` (`change_role_direct`).
+- **Severity:** Medium.
+- **Why it matters:** `applied` counts loop iterations, not affected rows, and `change_role_direct` returns
+  `status: "saved"` without checking `rowcount`. A caller cannot distinguish "role changed" from "no such
+  user", which for a security-relevant write invites downstream logic to proceed on a no-op.
+- **Evidence:** probe P7 — `apply_bulk(ADMIN_T1, [{"user_id": "nobody", "role": "admin"}])` →
+  `{'applied': 1, 'total': 1, 'status': 'complete'}`. `change_role_direct(ADMIN_T1, "ghost", "admin")` →
+  `{'user_id': 'ghost', 'role': 'admin', 'status': 'saved'}`.
+- **Correction:** use `cursor.rowcount`, count only matched rows, and report not-found entries
+  (e.g. `{"applied": n, "skipped": [...], "status": "partial"|"complete"}`).
+
+### N3 — `apply_bulk` does not increment `version`, unlike every other write path
+- **File / location:** `sources/src/roleservice.py:70–71` (compare `approve` at line 52 and
+  `change_role_direct` at line 62, both `version = version + 1`).
+- **Severity:** Medium.
+- **Why it matters:** A bulk role change leaves the per-user concurrency/version token untouched, so it is
+  invisible to any consumer that uses `version` to detect change (cache invalidation, optimistic
+  concurrency, audit reconstruction). Inconsistent with the two other paths in the same file.
+- **Evidence:** probe P6 — `change_role_direct` → `{'role': 'analyst', 'version': 2}`; `apply_bulk` →
+  `{'role': 'analyst', 'version': 1}`; a bulk write against a user at `version = 5` left it at `5`.
+  No reader of `users.version` exists in this tree (residual uncertainty, §3).
+- **Correction:** `UPDATE users SET role = ?, version = version + 1 WHERE id = ?`.
+
+### N4 — `apply_bulk` is not atomic: a mid-loop failure leaves a partial write that later becomes durable
+- **File / location:** `sources/src/roleservice.py:68–73`.
+- **Severity:** Medium.
+- **Why it matters:** The payload is not validated up front and there is no `try/except` + rollback. When an
+  item is malformed the exception propagates leaving the earlier `UPDATE`s in the still-open transaction on
+  the shared connection; the next `commit()` by *any* caller persists the half-applied batch, and the
+  caller of `apply_bulk` receives no partial result at all.
+- **Evidence:** with `changes = [{"user_id": "u1", "role": "analyst"}, {"bogus": "no user_id"}]`,
+  `apply_bulk` raised `KeyError: 'role'`; the connection then showed `u1 → {'role': 'analyst', 'version': 1}`
+  and an unrelated later `change_role_direct(...)` commit made it durable (`u1 → admin, version 2`).
+- **Correction:** validate every item before the first write, wrap the loop in `try/except` with
+  `conn.rollback()` (or a savepoint per item), and return applied/failed detail.
+
+### N5 — Unused `actor` parameters and now-dead exception/whitelist surface
+- **File / location:** `sources/src/roleservice.py:57`, `61`, `67` (`actor` never read);
+  `21–22`, `25–26`, `29` (`Forbidden`, `ValidationError`, `ROLES`).
+- **Severity:** Low.
+- **Why it matters:** The signatures advertise authorization that the bodies do not perform, which is
+  exactly how the B1/B4/B5/B6 omissions survived review; and `Forbidden`/`ValidationError`/`ROLES` are now
+  unreferenced (`grep -c "raise Forbidden"` → `0`, `grep -c "raise ValidationError"` → `0`), so a reader
+  cannot tell whether the guards were moved or dropped.
+- **Evidence:** `change_role_direct(None, "u1", "admin")` succeeded; `list_pending(None)` returned normally;
+  grep counts above.
+- **Correction:** perform the checks and keep the parameters, or remove the parameters so callers cannot
+  assume the service authorizes. Keep `ROLES` only while it is used to validate.
+
+### N6 — `list_pending` is unbounded and its new index only covers half the query
+- **File / location:** `sources/src/roleservice.py:58` and the index at `sources/src/roleservice.py:17`
+  (`pr.diff` L46).
+- **Severity:** Low.
+- **Why it matters:** The result set is not limited or paginated and returns full rows (including
+  `tenant_id`, `requested_by`); the added index covers `status = 'pending'` but not the
+  `ORDER BY created_at DESC`, so a large tenant still sorts in memory. Performance/reporting hygiene, not a
+  contract breach.
+- **Evidence:** file read of `sources/src/roleservice.py:58`; index definition at line 17.
+- **Correction:** add `LIMIT`/pagination and an index on `(status, created_at)`.
+
+---
+
+## 3. Evidence used, and residual uncertainty
+
+All evidence below was produced in this sandbox, on copies of the tree; nothing in the working directory,
+`pr.diff`, `pr.patch` or the fixture baseline was modified.
+
+Environment setup (scratch copy — the working copy is never written to):
+
+```
+SCR=/home/sjeva/bench/model-testing/hermes-home/cache/scratch/t7
+cp -r <workdir>/sources $SCR/post                      # post-PR tree
+cp -r <workdir>/sources $SCR/pre                       # pre-PR tree
+cd $SCR/pre && git init -q . && git apply -R <workdir>/pr.patch    # reverse-apply, clean
+cp -r $SCR/post/src $SCR/postX/src && cp $SCR/pre/tests $SCR/postX/tests
+```
+
+Commands and results:
+
+| # | Command | Result |
+|---|---------|--------|
+| 1 | `cd $SCR/post && python3 -m unittest discover -s tests -v` | `Ran 3 tests ... OK`, exit 0 |
+| 2 | `cd $SCR/pre && python3 -m unittest discover -s tests -v` | `Ran 4 tests ... FAILED (failures=1)` — `test_cross_tenant_user_is_not_touched`: `AssertionError: 'admin' != 'viewer'` |
+| 3 | `cd $SCR/postX && python3 -m unittest discover -s tests -v` | `FAILED (failures=3)`: `Forbidden not raised`, `ValidationError not raised`, `'admin' != 'viewer'`, exit 1 |
+| 4 | `python3 $SCR/probe_post.py` (P1–P9 probes against `post/src`) | see per-finding citations above |
+| 5 | same-millisecond id test, `pre/src` vs `post/src` | pre: `1 requests inserted before failure; IntegrityError('UNIQUE constraint failed: role_requests.id')`; post: `20000 requests inserted; error=None` |
+| 6 | `grep -n "WHERE" post/src/roleservice.py` | six predicates, all keyed on `id` or `status`; no `tenant_id` appears in any `WHERE` clause |
+| 7 | `grep -c "raise Forbidden"` / `"raise ValidationError"`, `grep -n "ROLES"` on `post/src/roleservice.py` | `0` / `0`; `ROLES` appears only at its definition, line 29 |
+| 8 | heredoc probe: `apply_bulk` with a malformed second item, then an unrelated `change_role_direct` commit | `KeyError: 'role'`; `u1` showed `{'role': 'analyst', 'version': 1}` in the open transaction and became durable afterwards (N4) |
+| 9 | heredoc probe: `change_role_direct` on a non-existent user / with `actor=None` / with a role outside `ROLES`; `apply_bulk` with a role outside `ROLES`; `list_pending(None)` | `{'status': 'saved'}` for `ghost`; wrote `admin` with `actor=None`; stored `root`; `{'applied': 1, ..., 'status': 'complete'}`; `[]` (B4, B2, N2, N5) |
+| 10 | sha256[:16] of the six baseline fixtures vs `.bench-fixture-baseline.json` | all `UNCHANGED` (baseline algorithm is sha256, first 16 hex chars) |
+
+Evidence quality notes: findings B1, B2, B3, B4, B5, B6, N1, N2, N3, N4 and N5 are each backed by a
+reproduced runtime result, not by reading alone. B7 is backed by runtime results for all three write paths.
+B8 is backed by the failing resume of the deleted tests against the post-PR source.
+
+**Residual uncertainty**
+
+1. **Reconstruction of the pre-PR file.** I never saw the pre-PR revision directly; I reconstructed it by
+   reverse-applying `pr.patch` (`git apply -R` applied cleanly, no fuzz). If the pre-PR file differed from
+   that reconstruction, the specific claim "`test_cross_tenant_user_is_not_touched` was already failing
+   before the PR" would be affected. The claim that it fails *after* the PR is independent of this and is
+   verified directly (row 3).
+2. **`users.version` semantics.** No reader of `version` exists in this tree, so the consequence of N3 is
+   inferred from the column's design (bumped on both other write paths) rather than observed. If `version`
+   is unused in the wider product, N3 downgrades to cosmetic.
+3. **Reachability of the new methods.** The tree contains no HTTP/handler layer, so I cannot show that
+   `change_role_direct`, `apply_bulk` and `list_pending` are reachable by an untrusted caller. They accept
+   an `actor` dict, which is the signature the existing authorized entry point uses, and the brief states the
+   product requirement for all role changes; if these are reachable only from an already-tenant-scoped,
+   already-admin-checked caller, the severity of B4/B5/B6 would be lower — but the methods would still be
+   unaudited, which invariant (c) forbids regardless of caller.
+4. **`role_requests.tenant_id` is the requester's tenant, not the target's** (`sources/src/roleservice.py:41`).
+   This is my reading of the code; it is why B3's remediation requires resolving the target user's tenant
+   rather than trusting the request row. If the schema intends `tenant_id` to be the target's tenant, the
+   recorded value is wrong for every row written by this code, which would be an additional finding.
+5. **Severity calibration of B2 and B7.** Neither is one of the four named invariants verbatim: B2 is an
+   input-validation contract (evidenced by a deleted test and a now-dead `ROLES` whitelist) and B7's
+   `approve` component is pre-existing. I graded both blocking because each maps to an explicit product
+   requirement or an explicitly deleted guarantee and both are fixable within this PR; a reviewer who reads
+   the contract more narrowly could grade them High rather than Critical. The underlying defects are
+   reproduced in all cases.
+
+---
+
+## 4. Findings considered and rejected
+
+Recorded so the author can see what was checked and deliberately not raised.
+
+1. **`uuid.uuid4().hex[:12]` replacing `f"rr-{int(time.time() * 1000)}"` (`pr.diff` L58–59) — rejected, not
+   a defect; it fixes a real bug.** The old scheme collided on the `role_requests.id` PRIMARY KEY for any
+   two requests in the same millisecond: the pre-PR code raised
+   `IntegrityError('UNIQUE constraint failed: role_requests.id')` on the *second* such call (1 insert
+   succeeded), while the post-PR code inserted 20,000 sequentially without error. It also removes the
+   guessability of a timestamp-derived id. **I specifically did not raise this as an idempotency defect**
+   (invariant (d)): the old id was not derived from the request content either, so keying on a fresh UUID
+   loses no replay protection that previously existed. The genuine (d) problem is the absent state guard
+   and absent idempotency key reported in B7, which is independent of the id scheme.
+2. **`CREATE INDEX idx_role_requests_status ON role_requests(status)` (`pr.diff` L46) — rejected, not a
+   defect.** A pure performance addition that matches the new `list_pending` predicate. The schema is
+   created fresh on every `Store()` connect, so there is no migration-ordering concern to raise. (Its
+   incompleteness for the `ORDER BY` is noted only as low-severity N6, not as a blocker.)
+3. **The existence of `list_pending`, `change_role_direct` and `apply_bulk` as features — rejected, not
+   defects.** Adding capabilities is a legitimate design decision; what I flag are the missing
+   authorization, tenant scoping, validation, audit and idempotency controls in them, not their presence.
+   Bulk and direct-role administration are plausible product needs and would be acceptable once B4, B5, N2,
+   N3 and N4 are addressed.
+4. **`import time` being retained — rejected.** Still used for `created_at` and `audit.at`
+   (`sources/src/roleservice.py:41, 45`). Not an unused import.
+5. **`change_role_direct` incrementing `version` while `apply_bulk` does not — not raised as a defect in
+   `change_role_direct`.** Incrementing is the consistent behaviour (it matches `approve`); the
+   inconsistency is `apply_bulk`'s omission (N3), which is what I report.
+6. **Methods returning plain `dict` instead of a typed object / `list_pending` returning `dict(r)` —
+   rejected.** A reasonable serialization choice for a service returning JSON-shaped results.
+7. **Returning `tenant_id` and `requested_by` inside `list_pending` rows — rejected as a separate finding.**
+   Once B6 scopes the query to the actor's tenant, exposing those fields to that tenant's own
+   administrators is normal; they are only a disclosure problem because of the missing filter.
+8. **`request_role_change` writing an audit row but not being idempotent — rejected as a duplicate of B7.**
+   Analysed, then folded into B7 rather than reported twice.
+9. **`Store.__init__` using `executescript` on a shared in-memory connection / no `PRAGMA foreign_keys` /
+   no test isolation between `svc()` calls — rejected as out of scope.** Pre-existing test-harness and
+   schema-design choices untouched by this diff.
+10. **`approve` having no administrator check — not reported as an independent finding.** It is subsumed by
+    B1 (the gate it relied on was removed) and B3 (the tenant/audit gap on the same path); reporting it
+    separately would triple-count one defect.
+
+---
+
+## 5. Merge recommendation
+
+**Do not merge.**
+
+The diff removes the administrator gate and the role whitelist from the role-change entry point, deletes
+the three tests that enforced the tenant boundary and those two controls, and adds three methods that take
+an `actor` and never read it — no authorization, no tenant predicate (verified: not one `WHERE` clause in
+the module mentions `tenant_id`), no audit row. Each of the four contractual invariants is broken by code
+introduced or edited in this diff: (a) tenant isolation — B3, B4, B5, B6; (b) administrator-only — B1, B4,
+B5, B6; (c) audit — B4, B5, B3; (d) no double-apply — B7.
+
+Path back to mergeable (I would expect a resubmission rather than a patch-up in flight):
+
+1. Restore the two deleted guards in `request_role_change` and the `row is None` guard in `approve`.
+2. Add authorization, target-tenant resolution and an audit row to `approve`, `change_role_direct`,
+   `apply_bulk`; scope `list_pending` to the actor's tenant behind an admin check.
+3. Add the `status = 'pending'` guard plus rowcount check to `approve`, and an idempotency key to the
+   direct/bulk paths.
+4. Restore the three deleted tests unchanged and add tenant-isolation and audit assertions covering the new
+   methods; all must pass, and `test_bulk_apply_reports_completion` must be replaced or tightened so it no
+   longer pins the false `complete`/`applied` accounting.
+
+After that, the surface is the same and the change becomes low-risk; the implementation additions
+(`uuid` ids, the `status` index) are sound and can be kept as they are.

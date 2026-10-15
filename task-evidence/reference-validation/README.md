@@ -21,3 +21,7 @@ Generated 2026-10-15T01:43:29Z
 
 6/6 pass
 ```
+
+=== reference re-validation after the A05/A14 correction (2026-10-15T02:55:45Z) ===
+reference: 14/14 checks pass
+defective: 4/14 checks pass; failing: ['A03', 'A04', 'A05', 'A07', 'A08', 'A09', 'A10', 'A12', 'A13', 'A14']

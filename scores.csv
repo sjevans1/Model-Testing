@@ -1,4 +1,25 @@
-task,task_area,candidate,label,status,attempt,overall_score,raw_score_before_overrides,critical_failures,checks_passed,checks_total,functional,security,instruction,testing,maintainability,efficiency,elapsed_s,metered_equiv_usd,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,api_calls,files_touched
-T2,framing,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,85.7,85.7,,14,14,,,100.0,50.0,100.0,,501.9,0.146113,126799,78664,2279424,0,40,6
-T2,framing,GPT-6 Luna,gpt-6-luna,completed,1,,82.2,"evaluator: contradicting the brief's hard constraints: 400 for ValidationError and NotFound must remain unchanged, but the package maps not-found to 404 and encodes it in test_post_role_not_found_returns_404",13,14,78.0,94.0,70.0,90.0,75.0,88.0,95.4,0.00757,27,7036,123740,22496,9,6
-T2,framing,Claude Haiku 5.5,haiku-5.5,completed,1,91.4,91.4,,14,14,92.0,88.0,95.0,91.0,96.0,85.0,139.2,0.093193,20,23393,204377,39171,9,6
+task,task_area,candidate,label,status,attempt,overall_score,raw_score_before_overrides,critical_failures,adjudications,checks_passed,checks_total,functional,security,instruction,testing,maintainability,efficiency,elapsed_s,metered_equiv_usd,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,api_calls,files_touched
+T1,planning,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,77.1,77.1,,,17,17,92.0,91.0,55.0,36.0,60.0,86.0,284.9,0.033244,36619,17320,245760,0,11,6
+T1,planning,GPT-6 Luna,gpt-6-luna,completed,1,91.8,91.8,,,17,17,92.0,94.0,95.0,89.0,86.0,87.0,100.7,0.007633,21,7082,86132,25826,7,6
+T1,planning,Claude Haiku 5.5,haiku-5.5,completed,1,89.7,89.7,,,17,17,90.0,92.0,87.0,90.0,89.0,85.0,59.9,0.007727,8,11013,50118,13751,3,6
+T2,framing,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,85.7,85.7,,,14,14,,,100.0,50.0,100.0,,501.9,0.146113,126799,78664,2279424,0,40,6
+T2,framing,GPT-6 Luna,gpt-6-luna,completed,1,89.0,89.0,,,13,14,87.0,92.0,91.0,84.0,91.0,89.0,95.4,0.00757,27,7036,123740,22496,9,6
+T2,framing,Claude Haiku 5.5,haiku-5.5,completed,1,90.7,90.7,,,14,14,92.0,88.0,94.0,90.0,93.0,82.0,139.2,0.093193,20,23393,204377,39171,9,6
+T3,backend,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,96.8,96.8,,,14,14,100.0,100.0,100.0,70.0,100.0,,118.5,0.04709,79999,17843,279808,0,12,7
+T3,backend,GPT-6 Luna,gpt-6-luna,completed,1,96.8,96.8,,,14,14,100.0,100.0,100.0,70.0,100.0,,126.6,0.024644,51,10793,410526,33313,17,7
+T3,backend,Claude Haiku 5.5,haiku-5.5,completed,1,96.8,96.8,,,14,14,100.0,100.0,100.0,70.0,100.0,,69.8,0.07493,18,15528,194285,42219,8,7
+T4,frontend,DeepSeek V4.1 Flash,deepseek-v4.1-flash,failed,2,100.0,100.0,,,9,9,100.0,100.0,100.0,100.0,100.0,,600.1,0.0,,,,,,11
+T4,frontend,GPT-6 Luna,gpt-6-luna,completed,1,67.9,67.9,,"S04 failed on the frozen DOM contract: the confirmation control carries data-confirm=""no"" before confirming instead of ""yes"". An independent probe (task-evidence/t4-luna-confirm-probe.txt) shows the behaviour is correct: applying an admin change without confirming writes nothing, and confirming then applying writes exactly one admin change. Contract miss, not a privilege-escalation miss.",8,9,100.0,0.0,100.0,45.0,100.0,,464.8,0.055644,120,20784,1358020,51486,40,9
+T4,frontend,Claude Haiku 5.5,haiku-5.5,failed,2,100.0,100.0,,,9,9,100.0,100.0,100.0,100.0,100.0,,345.9,0.0,,,,,,8
+T5,security,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,96.8,96.8,,,14,14,100.0,100.0,100.0,70.0,100.0,,368.3,0.115423,100106,60708,2090240,0,34,8
+T5,security,GPT-6 Luna,gpt-6-luna,completed,1,96.8,96.8,,,14,14,100.0,100.0,100.0,70.0,100.0,,218.2,0.034354,57,16970,519120,44932,19,8
+T5,security,Claude Haiku 5.5,haiku-5.5,completed,1,96.8,96.8,,,14,14,100.0,100.0,100.0,70.0,100.0,,193.6,0.165966,36,39514,653235,55202,17,8
+T6,ci,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,94.7,94.7,,,6,6,100.0,100.0,100.0,50.0,100.0,,525.4,0.090534,120825,42244,598876,0,17,12
+T6,ci,GPT-6 Luna,gpt-6-luna,completed,1,94.7,94.7,,,6,6,100.0,100.0,100.0,50.0,100.0,,249.3,0.030752,60,15134,495980,37879,20,12
+T6,ci,Claude Haiku 5.5,haiku-5.5,completed,1,76.3,76.3,,,5,6,50.0,100.0,100.0,50.0,100.0,,113.7,0.069834,18,15449,178794,35620,8,12
+T7,review,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,96.4,96.4,,,11,12,97.0,96.0,98.0,95.0,96.0,93.0,205.6,0.060375,57769,33168,540416,0,18,5
+T7,review,GPT-6 Luna,gpt-6-luna,completed,1,91.7,91.7,,,10,12,88.0,93.0,95.0,94.0,92.0,95.0,113.9,0.010523,33,9192,220762,29726,11,5
+T7,review,Claude Haiku 5.5,haiku-5.5,completed,1,93.8,93.8,,,11,12,94.0,92.0,96.0,96.0,92.0,94.0,67.0,0.051674,16,12486,164225,19584,7,5
+T8,testing,DeepSeek V4.1 Flash,deepseek-v4.1-flash,terminated_after_deliverables,1,78.9,78.9,,"Two assertions encode policy the task never fixed (revoked reports must remain in the listing, and only an admin may revoke). Defect-sensitive suite; fails the pass-on-correct half only.",2,3,50.0,100.0,100.0,75.0,100.0,,600.1,0.0,,,,,,12
+T8,testing,GPT-6 Luna,gpt-6-luna,completed,1,75.8,75.8,,"Two assertions encode policy the task never fixed (a save_batch status string of ""failed"", and refusal of an owning analyst revoking). The suite is defect-sensitive; it is the second half of the two-sided check that fails.",2,3,50.0,100.0,100.0,45.0,100.0,,234.8,0.051347,90,15872,1166416,64385,30,6
+T8,testing,Claude Haiku 5.5,haiku-5.5,completed,1,71.1,71.1,,,3,3,100.0,100.0,0.0,75.0,0.0,,484.7,0.403335,80,99600,2044050,83348,39,266

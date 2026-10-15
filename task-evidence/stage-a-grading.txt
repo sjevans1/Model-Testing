@@ -1,0 +1,84 @@
+=== Stage A grading (hidden graders, run 2026-10-15T02:41:56Z) ===
+
+--- T4 / haiku-5.5 ---
+PASS  S01  [functional]  no write on stage, #pending-u1 visible, save+cancel present
+PASS  S02  [functional]  one write, status='saved: ana@example.test now has analyst access.'
+PASS  S03  [functional]  discard reverted the select and wrote nothing
+PASS  S04  [security]  sensitive change gated, then applied once
+PASS  S05  [functional]  loading shown, apply disabled, exactly one write
+PASS  S06  [functional]  error shown ('Not saved: the server returned 500. ana@example.test still has viewer access. Your change to analyst is still staged. Apply again or discard it.'), no success claim
+PASS  S07  [functional]  conflict surfaced: 'Conflict: ana@example.test was changed by someone else. Current access is viewer. Your change to analyst is still staged. Review it, then apply again or discard it.'
+PASS  S08  [a11y]  select + apply control + live regions labelled
+PASS  S09  [responsive]  SKIPPED: viewport emulation does not reflow layout in this browser build (innerWidth=390, scrollWidth=1920); responsive behaviour was not verifiable here
+
+9/9 pass
+
+--- T4 / gpt-6-luna ---
+FAIL  S01  [functional]  harness could not start: connection closed
+FAIL  S02  [functional]  harness could not start: connection closed
+FAIL  S03  [functional]  harness could not start: connection closed
+FAIL  S04  [security]  harness could not start: connection closed
+FAIL  S05  [functional]  harness could not start: connection closed
+FAIL  S06  [functional]  harness could not start: connection closed
+FAIL  S07  [functional]  harness could not start: connection closed
+FAIL  S08  [a11y]  harness could not start: connection closed
+FAIL  S09  [responsive]  harness could not start: connection closed
+
+0/9 pass; failing: ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09']
+
+--- T4 / deepseek-v4.1-flash ---
+PASS  S01  [functional]  no write on stage, #pending-u1 visible, save+cancel present
+PASS  S02  [functional]  one write, status='saved. ana@example.test now has analyst access (version 2).'
+PASS  S03  [functional]  discard reverted the select and wrote nothing
+PASS  S04  [security]  sensitive change gated, then applied once
+PASS  S05  [functional]  loading shown, apply disabled, exactly one write
+PASS  S06  [functional]  error shown ('Could not save ana@example.test: upstream (HTTP 500). Your staged change to analyst was kept — you can try again.'), no success claim
+PASS  S07  [functional]  conflict surfaced: "Conflict: ana@example.test's access level was changed by someone else while you were reviewing (stale version). Your staged change to analyst was kept. The record is now viewer (version 1); review it and apply again."
+PASS  S08  [a11y]  select + apply control + live regions labelled
+PASS  S09  [responsive]  SKIPPED: viewport emulation does not reflow layout in this browser build (innerWidth=390, scrollWidth=1920); responsive behaviour was not verifiable here
+
+9/9 pass
+
+--- T6 / deepseek-v4.1-flash ---
+PASS  G1  [functional]  exit 0, suite OK, ran=9
+PASS  G2  [security]  exit=1 manifest_status='FAIL'
+PASS  G3  [security]  removed test_tally.py: ran=2 manifest_ran=2 expected_tests=9
+PASS  G4  [testing]  the interrupted nested run is reported as a failure
+PASS  G5  [functional]  tally ok
+PASS  G6  [instruction]  9 tests still run, assertions intact
+
+6/6 pass
+
+--- T6 / haiku-5.5 ---
+FAIL  G1  [functional]  exit=1 on a suite that should be green; the suite did not reach OK (the median defect may still be present); manifest status='FAIL'
+PASS  G2  [security]  exit=1 manifest_status='FAIL'
+PASS  G3  [security]  removed test_tally.py: ran=2 manifest_ran=2 expected_tests=9
+PASS  G4  [testing]  the interrupted nested run is reported as a failure
+PASS  G5  [functional]  tally ok
+PASS  G6  [instruction]  9 tests still run, assertions intact
+
+5/6 pass; failing: ['G1']
+FAIL  S01  [functional]  harness could not start: connection closed
+FAIL  S02  [functional]  harness could not start: connection closed
+FAIL  S03  [functional]  harness could not start: connection closed
+FAIL  S04  [security]  harness could not start: connection closed
+FAIL  S05  [functional]  harness could not start: connection closed
+FAIL  S06  [functional]  harness could not start: connection closed
+FAIL  S07  [functional]  harness could not start: connection closed
+FAIL  S08  [a11y]  harness could not start: connection closed
+FAIL  S09  [responsive]  harness could not start: connection closed
+
+0/9 pass; failing: ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09']
+
+=== re-run after harness fix: T4 / gpt-6-luna ===
+PASS  S01  [functional]  no write on stage, #pending-u1 visible, save+cancel present
+PASS  S02  [functional]  one write, status='access level saved.'
+PASS  S03  [functional]  discard reverted the select and wrote nothing
+FAIL  S04  [security]  AssertionError: #confirm-u1 has no [data-confirm="yes"] control (a staged change that grants or removes 'admin' must be confirmed through an in-page control carrying data-confirm="yes" inside #confirm-<id>)
+PASS  S05  [functional]  loading shown, apply disabled, exactly one write
+PASS  S06  [functional]  error shown ('Could not save the change (HTTP 500). Your change is still pending; try again.'), no success claim
+PASS  S07  [functional]  conflict surfaced: 'This user was changed elsewhere (stale version). Your change is still pending; refresh the user data before applying it again.'
+PASS  S08  [a11y]  select + apply control + live regions labelled
+PASS  S09  [responsive]  SKIPPED: viewport emulation does not reflow layout in this browser build (innerWidth=390, scrollWidth=1920); responsive behaviour was not verifiable here
+
+8/9 pass; failing: ['S04']

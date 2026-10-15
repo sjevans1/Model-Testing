@@ -164,9 +164,35 @@ class Runner:
                     break
             except Exception:  # noqa: BLE001
                 time.sleep(0.25)
-        self.cdp = CDP(port=self.debug_port)
-        # lightpanda allows a single target: open it once and navigate for each scenario.
-        self.session = self.cdp.open_page("about:blank")
+        # Start the browser with up to three attempts: if the process is killed by an unrelated
+        # cleanup while we connect, the CDP socket closes and every scenario would fail for a
+        # reason that has nothing to do with the candidate.
+        last: Exception | None = None
+        for attempt in range(3):
+            try:
+                self.cdp = CDP(port=self.debug_port)
+                # lightpanda allows a single target: open it once and navigate for each scenario.
+                self.session = self.cdp.open_page("about:blank")
+                return
+            except Exception as exc:  # noqa: BLE001
+                last = exc
+                time.sleep(1.5 + attempt)
+                self.debug_port = free_port()
+                if self.browser_proc:
+                    self.browser_proc.terminate()
+                self.browser_proc = subprocess.Popen(
+                    ["lightpanda", "serve", "--host", "127.0.0.1", "--port", str(self.debug_port)],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                )
+                deadline = time.time() + 20
+                while time.time() < deadline:
+                    try:
+                        with urllib.request.urlopen(
+                                f"http://127.0.0.1:{self.debug_port}/json/version", timeout=2):
+                            break
+                    except Exception:  # noqa: BLE001
+                        time.sleep(0.25)
+        raise RuntimeError(f"browser could not be started after 3 attempts: {last}")
 
     def stop(self) -> None:
         if self.cdp:

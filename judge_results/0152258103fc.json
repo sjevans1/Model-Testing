@@ -1,0 +1,12 @@
+{
+  "functional": 92,
+  "security": 94,
+  "instruction": 95,
+  "maintainability": 86,
+  "testing": 89,
+  "efficiency": 87,
+  "critical_failures": [],
+  "rationale": "Matches the required structure section-for-section and keeps the three planes separated throughout. FACTS discipline is strong: capabilities labelled [CONFIG]/[EXTEND]/[NEW], unknowns raised as [DECISION], and it catches the deployed-PostgreSQL-is-the-app-DB trap. Isolation, confidential-as-enforced-access-rule, least-privilege sources and fail-closed paths are concretely specified with negative tests. Deductions: work packages have exit gates but no size or effort bounds, tests lack an explicit requirements traceability matrix, and authorization/audit rules repeat across several sections.",
+  "_task": "T1",
+  "_label": "gpt-6-luna"
+}

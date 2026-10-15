@@ -1,0 +1,10 @@
+Done. `SavedReportsService` is implemented in `src/reportcore/service.py`, with 30 new tests in `tests/test_saved_reports.py` and design notes in `notes.md`.
+
+First full run of `sh run_checks.sh`: **passed — 32 tests, OK, exit 0** (no correction cycle needed; led me to skip the allowed ones).
+
+What it does:
+- save_report — validates name/payload/classification, gates `analyst` (confidential adds `admin`), then in one transaction inserts the `reports` row and an immutable `report_snapshots` row holding canonical JSON (`sort_keys`, compact separators) + sha256, audits `report.save` with the digest as detail. Tenant/owner come from `actor` only; payload keys like `tenant_id`/`owner_id` are stored as content but never used for scoping.
+- get_report / list_reports — row lookup, then `require_tenant` before the classification check, so a foreign tenant gets `NotFound` (byte-identical message to a missing id), never `Forbidden`; confidential is admin-only; both audited (`report.read`, `report.list`).
+- revoke_report — `analyst` gate, tenant-scoped, updates only `revoked_at`/`revoked_by`/`revoke_reason`, audits `report.revoke` with the reason. The snapshot row is never written again; the revoked report stays readable with `status: "revoked"`. Double revoke raises `Conflict` (the one error type `DatasetRegistry` leaves unused).
+
+Verified: only `service.py` changed among tracked files — every other file's sha256 still matches `.bench-fixture-baseline.json`, including `tests/test_smoke.py`. Standard library only. The standalone hash-recomputation snippet and `sh run_checks.sh` in `notes.md` were both executed as written; the fresh-process run of the new suite alone reports 30 tests OK.

@@ -1,0 +1,89 @@
+# Review: roleservice PR (pr.diff)
+
+Scope: pr.diff against src/roleservice.py and tests/test_roleservice.py. Post-PR tree read from sources/. The diff and code were not modified.
+
+Probe script (scratch, not in the repo): $TMPDIR/probe_t7.py. It imports sources/src/roleservice.py and runs each case against a fresh in-memory Store with users u1 (tenant t1) and u2 (tenant t2). The existing suite (python3 -m unittest discover -s tests -v in sources/) passes 3/3. Passing tests here say nothing about the tenant, admin, audit or replay requirements, because none of the three tests checks them.
+
+## 1. Blocking findings
+
+B1. Admin and role-validation checks removed from request_role_change
+File: src/roleservice.py, RoleService.request_role_change (post-PR lines around 36-38)
+Severity: blocker (authorization)
+Why: The PR deletes the ROLES check (ValidationError "bad role") and the actor["role"] != "admin" check (Forbidden "admins only"). Any authenticated actor, including a viewer, can now create a role request, and any string can be stored as requested_role.
+Evidence: probe case "viewer request accepted" returns True for a VIEWER actor requesting "admin" for u1. Probe case "superuser stored in users" approves a request for "superuser" and the users row then holds role='superuser'. The two pre-PR tests that covered this (test_non_admin_cannot_request, test_bad_role_is_rejected) were deleted in the same PR.
+Correction: Restore both checks before the insert. Put the role check inside the service, not only in the API layer, since the service is the enforcement point the product relies on. Restore the two deleted tests.
+
+B2. Approve path has no actor, tenant or admin check and no status guard
+File: src/roleservice.py, RoleService.approve (post-PR lines around 51-55)
+Severity: blocker (authorization, tenant isolation, replay)
+Why: The PR removes the `if row is None: raise ValidationError("no such request")` guard. approve() still never checks the actor's role or tenant, and it never checks role_requests.status before applying. Consequences: a non-admin can approve; an approver in tenant t1 can apply a request whose user belongs to t2 (the request's tenant_id is not compared to the actor's); and approving the same request twice applies it twice.
+Evidence: probe "viewer approves request -> u1" changes u1 to 'analyst' with VIEWER as actor. Probe "t1 admin escalates t2 user to admin" creates a request by ADMIN(t1) for u2(t2) and approves it, leaving u2 at 'admin'. Probe "approve replayed after manual change" shows that approving the same request again after a manual change to 'viewer' sets the role back to 'analyst' and bumps version to 4. Probe "approve missing id" now raises a bare TypeError ('NoneType' object is not subscriptable) instead of the ValidationError the removed guard produced; this is a regression in error handling.
+Correction: In approve(): load the request, raise Forbidden unless actor role is admin, raise Forbidden unless request.tenant_id == actor.tenant_id AND the target user's tenant_id == actor.tenant_id (check the users row, not only the request row). Raise ValidationError when the request is missing. Make the status change conditional, e.g. UPDATE role_requests SET status='approved' WHERE id=? AND status='pending', and only apply the user update when rowcount == 1, all in one transaction. Restore the missing-request guard. Write an audit row (see B4).
+
+B3. New direct-change and bulk-change paths bypass every control
+File: src/roleservice.py, RoleService.change_role_direct (post-PR lines around 57-61) and RoleService.apply_bulk (post-PR lines around 63-73)
+Severity: blocker (authorization, tenant isolation, audit, replay/concurrency)
+Why: Both methods are new in this PR. Neither checks the actor's role or tenant, neither validates new_role or change["role"] against ROLES, neither writes an audit row, and both UPDATE users by user_id alone with no tenant filter. apply_bulk also does not bump version, so it defeats optimistic concurrency that approve relies on. It also reports applied = len(changes) without checking rowcount, so it reports success for user_ids that do not exist.
+Evidence: probe "viewer direct cross-tenant to admin" lets a VIEWER set u2 (tenant t2) to 'admin'. Probe "audit rows added by direct change" = 0. Probe "viewer bulk to t2 user + bogus" returns {'applied': 2, 'total': 2, 'status': 'complete'} for a VIEWER, u2 is set to 'admin' and the non-existent 'ghost' user is counted as applied. Probe "bulk replay results" shows the same bulk applied twice with no version change, so replays are not detected.
+Correction: Either remove both methods from this PR, or make each one: require admin; resolve the target user and require same tenant as actor; validate role against ROLES; route the change through the same request/approve path or write an audit row in the same transaction; bump version; check rowcount and reject or report unknown users; and carry an idempotency key so a replay is recognised. The test test_bulk_apply_reports_completion covers none of these, so it cannot be used as evidence that the method is safe.
+
+B4. Tests weakened to make the suite green
+File: tests/test_roleservice.py (diff hunks at -7, -19, -27)
+Severity: blocker (process; the brief forbids weakening tests)
+Why: The PR deletes test_non_admin_cannot_request, test_bad_role_is_rejected and test_cross_tenant_user_is_not_touched, and removes the ANALYST fixture and the Forbidden and ValidationError imports. The surviving tests cover none of the contractual properties: no tenant boundary test, no admin-only test, no audit test, no replay test. The new test_approve_applies_the_role uses u1, which is in the actor's tenant, so it confirms only the happy path. test_cross_tenant_user_is_not_touched used to assert that a cross-tenant approve leaves u2 at 'viewer'; that is the exact property B2 breaks, and the test was removed rather than fixed.
+Evidence: sources/tests/test_roleservice.py contains 3 tests, all passing; the pre-PR file had 4. I did not literally re-run the deleted pre-PR tests against the post-PR code. The probe results above show the same behaviour those tests asserted against: the non-admin request is accepted, the bad role is stored, and the cross-tenant approve changes u2 to 'admin' where the deleted test expected 'viewer'.
+Correction: Restore the three deleted tests (test_non_admin_cannot_request, test_bad_role_is_rejected, test_cross_tenant_user_is_not_touched) and fix the cross-tenant expectation so it fails against the current code. Add tests for: non-admin request and approve rejected; cross-tenant approve and direct change rejected; invalid role rejected in every path; approve twice applies once (second call is a no-op or an error); each admin action writes an audit row.
+
+B5. list_pending exposes all tenants' requests to any caller
+File: src/roleservice.py, RoleService.list_pending (post-PR lines around 47-49)
+Severity: blocker (tenant isolation, read side)
+Why: The query has no tenant filter and no actor check. Any caller sees every pending request across all tenants, including user_id, requested_role and requested_by values. The product's tenant boundary is contractual, so a cross-tenant read is a boundary violation even though this method does not change a role.
+Evidence: probe "viewer list_pending sees rows" returns 1 row for a VIEWER actor in t1 when the pending request belongs to u2 in t2 (the probe creates the request as ADMIN t1 for u2; the row is visible to the VIEWER).
+Correction: Require an actor, filter WHERE tenant_id = ? with actor["tenant_id"], and require admin (or the appropriate read role). Add a test that a request from another tenant is not returned.
+
+## 2. Non-blocking findings
+
+N1. Audit writes missing from approve (pre-existing, not fixed by PR)
+File: src/roleservice.py, RoleService.approve
+Severity: non-blocking for this PR alone, but must be fixed before the product claim "administrative actions are audited" holds for approvals. Escalate to blocking if the team counts approve as an admin action.
+Evidence: probe "audit rows added by approve" = 0. request_role_change writes role.request; approve writes nothing.
+Correction: Insert an audit row (actor, tenant, action 'role.approve', object request_id, detail new role) in the same transaction as the role update.
+
+N2. approve and apply_bulk do not check the target user exists
+File: src/roleservice.py, approve; apply_bulk
+Severity: non-blocking (correctness)
+Evidence: apply_bulk counts unknown user_ids as applied (see B3). approve on an approved request whose user was removed updates zero rows and marks the request approved without any error.
+Correction: Check cursor.rowcount and report or raise.
+
+N3. Request id scheme changed to random UUID
+File: src/roleservice.py, RoleService.request_role_change (post-PR line around 37)
+Severity: non-blocking, informational
+Why: The millisecond-timestamp id could collide for two requests in the same millisecond, and PRIMARY KEY would then raise IntegrityError. A random 48-bit id (uuid4 hex[:12]) removes that collision class for practical purposes. Note that a random id is not an idempotency key: it does not stop a replayed request from creating a second row. Idempotency has to come from a client-supplied key.
+Correction: Keep the change. Add a client idempotency key if replay protection is required at the request layer (see B2 and B3).
+
+## 3. Evidence and residual uncertainty
+
+Evidence used: full read of pr.diff; full read of sources/src/roleservice.py and sources/tests/test_roleservice.py; sources/README.md (states the post-PR tree is reference only); the existing suite run (3/3 pass); the probe script above run against sources/src/roleservice.py.
+
+Residual uncertainty:
+- The product's API layer (the caller of this service) is not in the sandbox. If callers enforce admin and tenant checks before calling RoleService, B1 through B3 are partly mitigated. The service has no such checks itself, and the product requirement is about the enforced behaviour, so I have not discounted them. Confirm with the owners of the calling layer.
+- Tenant ownership of users is assumed to be stored in users.tenant_id. The schema supports this, but no code here reads it.
+- No concurrency test was run; the version and replay findings are from sequential probes.
+- The audit table exists but no reader was checked; I have assumed "audited" means a row is written in the same database.
+
+## 4. Considered and rejected
+
+R1. Replacing the time-based request id with uuid4. Rejected as a defect; it fixes a collision risk and is a legitimate change (see N3).
+R2. Adding idx_role_requests_status. Rejected as a defect. The index is reasonable for the list_pending query. Its selectivity is low (few statuses), so the benefit is modest, but it has no correctness or security impact.
+R3. Docstring change in roleservice.py and tests (pre-PR to post-PR wording). Rejected; cosmetic and accurate.
+R4. Removing ROLES/Forbidden/ValidationError imports from the test file. Rejected as an isolated change; the imports go with the deleted tests and the blocking finding is the deletion, not the import removal.
+R5. request_role_change inserting into role_requests while the actor's tenant_id is taken from the actor argument. Rejected as a defect in isolation: tenant comes from the authenticated actor, not from user input. The gap is in approve (B2), which does not compare tenants.
+R6. Single commit at the end of apply_bulk. Rejected as an atomicity defect: if an exception is raised mid-loop nothing is committed, which is the desired all-or-nothing behaviour. The problem is the missing checks, not the commit placement.
+
+## 5. Merge recommendation
+
+Do not merge.
+
+Blocking: B1 (request authz and role validation removed), B2 (approve has no authz, tenant or replay guard), B3 (direct and bulk role-change paths with no authz, tenant, audit, validation or version control), B4 (tests removed that covered tenant and admin properties), B5 (list_pending is cross-tenant).
+
+Minimum to reconsider: restore the removed checks and tests; either remove change_role_direct and apply_bulk or bring them under the same admin, tenant, validation, audit and idempotency rules as approve; add audit to approve; add tenant and admin tests for every role-changing and reading method. Re-run the probe cases; each should now raise Forbidden or ValidationError, or be a no-op for replays.

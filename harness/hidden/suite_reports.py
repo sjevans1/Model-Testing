@@ -34,6 +34,7 @@ CHECKS: list[tuple[str, str, str]] = [
     ("A11", "regression", "DatasetRegistry still round-trips and still scopes by tenant"),
     ("A12", "isolation", "a payload-supplied tenant_id cannot move a report to another tenant"),
     ("A13", "batch", "save_batch reports the true saved count and only calls a clean batch complete"),
+    ("A14", "revocation", "a revoked report is absent from listings, or clearly marked as revoked"),
 ]
 
 
@@ -159,12 +160,15 @@ def run(tree: pathlib.Path) -> list[dict]:
         theirs = svc.save_report(u["admin2"], "Theirs", {"x": 2})
         gone = svc.save_report(u["analyst1"], "Old", {"x": 3})
         svc.revoke_report(u["analyst1"], gone, "obsolete")
-        ids = {r["id"] for r in svc.list_reports(u["analyst1"])}
+        rows = svc.list_reports(u["analyst1"])
+        ids = {r["id"] for r in rows}
         assert mine in ids, "own report missing from list"
         assert theirs not in ids, "another tenant's report leaked into the list"
-        assert gone not in ids, "a revoked report is still listed"
-        for row in svc.list_reports(u["analyst1"]):
-            assert row.get("revoked") is False, f"revoked row reported as live: {row}"
+        for row in rows:
+            if row.get("id") == gone:
+                live = (row.get("revoked") is False and not row.get("revoked_at")
+                        and str(row.get("status", "")).lower() not in ("revoked", "deleted"))
+                assert not live, f"a revoked report is presented as live: {row}"
         return f"visible ids={sorted(i[:6] for i in ids)}"
 
     # -- A06 -------------------------------------------------------------------------
@@ -318,9 +322,24 @@ def run(tree: pathlib.Path) -> list[dict]:
         )
         return f"applied={applied} status={status!r}"
 
+    def a14():
+        store, u, svc, _ = fresh()
+        gone = svc.save_report(u["analyst1"], "Gone", {"x": 1})
+        svc.revoke_report(u["analyst1"], gone, "no longer needed")
+        rows = svc.list_reports(u["analyst1"])
+        row = next((r for r in rows if r.get("id") == gone), None)
+        if row is None:
+            return "revoked report is not listed"
+        for key in ("revoked", "revoked_at", "status", "state"):
+            if key in row and str(row[key]).lower() in ("true", "revoked", "deleted"):
+                return f"listed but marked revoked via {key}={row[key]!r}"
+        raise AssertionError(
+            "the revoked report is listed with no indication that it is revoked: "
+            f"{ {k: v for k, v in row.items() if k != 'payload'} }")
+
     fns = dict(
         A01=a01, A02=a02, A03=a03, A04=a04, A05=a05, A06=a06,
-        A07=a07, A08=a08, A09=a09, A10=a10, A11=a11, A12=a12, A13=a13,
+        A07=a07, A08=a08, A09=a09, A10=a10, A11=a11, A12=a12, A13=a13, A14=a14,
     )
     for cid, group, desc in CHECKS:
         record(cid, group, desc, fns[cid])

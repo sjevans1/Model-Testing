@@ -1,0 +1,5 @@
+Repaired `tally` and the CI gate. `root-cause.md` documents the evidence, causes, changes, verification output, and correction-cycle result.
+
+Final `sh -n run_ci.sh && sh run_ci.sh` passed: `Ran 9 tests in 8.053s`, `OK`, exit 0. The manifest records `PASS`, `ran: 9` of 9 expected; `summary.txt` contains `OK`.
+
+The bounded-timeout check now correctly fails when the nested run is interrupted. The first repair cycle fixed the underlying issues; a second correction fixed summary formatting. Final syntax and acceptance-state assertions passed.

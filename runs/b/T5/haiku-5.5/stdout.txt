@@ -1,0 +1,20 @@
+All eight defects in the brief are fixed, `sh run_checks.sh` exits 0 with 34 tests passing, and `findings.md` is written.
+
+What changed:
+- `src/reportcore/authz.py`: `require_role` denies unknown or empty roles and rejects an unknown minimum role. `may_read_classification` fails closed for unknown roles and classifications.
+- `src/reportcore/service.py`:
+  - `get_report` is tenant-scoped and enforces classification. Foreign-tenant access returns the same NotFound as a missing object.
+  - `revoke_report` requires same tenant, plus owner or admin.
+  - `list_reports` is tenant-scoped, hides revoked reports, and filters by classification.
+  - `save_report` takes tenant and owner from the actor only, and gates analyst and confidential-admin the same way `DatasetRegistry` does.
+  - `save_batch` reports true `applied` and `saved` counts, a `failed` list, and `status` of complete, partial or failed.
+- `tests/test_authz_saved_reports.py`: 33 new negative and regression tests. `test_smoke.py` is untouched.
+
+Verification:
+- Probe runs against the original code confirmed each defect before I changed anything.
+- The original code has no git history for these files, so I rebuilt the pre-fix version in a scratch copy by reversing the edits. Against it, 22 of the 33 new test methods fail (32 failure records counting subtests). The other 11 are positive or regression checks that pass on both versions by design.
+
+Limits, also in findings.md:
+- Denied attempts are not audited. Only successful mutations and reads are.
+- The brief lists no D7 and the source has none, so findings.md says so rather than inventing one.
+- Changing the shared role primitives also changes `DatasetRegistry`: an unknown role is now denied on dataset reads. Its smoke test still passes.

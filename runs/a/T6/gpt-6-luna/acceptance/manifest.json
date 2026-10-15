@@ -1,0 +1,12 @@
+{
+  "schema": 2,
+  "suite": "tally",
+  "modules": [
+    "tests/test_acceptance_manifest.py",
+    "tests/test_tally.py"
+  ],
+  "expected_tests": 9,
+  "ran": 9,
+  "status": "PASS",
+  "generated_by": "run_ci.sh"
+}

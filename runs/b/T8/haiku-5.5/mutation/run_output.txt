@@ -1,0 +1,21 @@
+reference: 0 OK []
+M1   claim1 detected=True FAILED (failures=4)  <- get_report has no tenant scope (defect D1)
+M2   claim1 detected=True FAILED (failures=2)  <- get_report ignores classification (defect D3)
+M3   claim1 detected=True FAILED (failures=1, errors=3)  <- get_report reports a foreign tenant as Forbidden, not NotFound (error-oracle)
+M4   claim1 detected=True FAILED (failures=1)  <- revoke_report has no tenant check (defect D2)
+M5   claim1 detected=True FAILED (failures=3)  <- revoke_report has no role check (defect D2)
+M6   claim1 detected=True FAILED (failures=1)  <- authz fails open for unknown roles (defect D4)
+M7   claim1 detected=True FAILED (failures=2)  <- save trusts payload tenant_id over the actor (defect D5)
+M8   claim1 detected=True FAILED (failures=2)  <- list_reports is not tenant scoped (defect D6)
+M9   claim1 detected=True FAILED (failures=1)  <- list_reports lists revoked reports as active (revoked hard-coded False, filter removed; defect D6)
+M10  claim1 detected=True FAILED (failures=2)  <- list_reports ignores classification
+M11  claim1 detected=True FAILED (failures=2)  <- viewer can save a report (write gate removed)
+M12  claim1 detected=True FAILED (failures=1)  <- unknown classification accepted on save (bypasses confidential gate)
+M13  claim2 detected=True FAILED (failures=4)  <- revoke rewrites the stored snapshot payload
+M14  claim2 detected=True FAILED (failures=4)  <- revoke recomputes the content hash on the snapshot
+M15  claim2 detected=True FAILED (errors=6)  <- revoke deletes the snapshot row
+M16  claim2 detected=True FAILED (failures=1)  <- revoke changes the report name (non-status column edited)
+M17  claim3 detected=True FAILED (failures=5)  <- batch always reports status complete (defect D8)
+M18  claim3 detected=True FAILED (failures=5)  <- batch applied counts requested items, not saved (defect D8)
+M19  claim3 detected=True FAILED (failures=3)  <- batch status complete when any item saved
+M20  claim3 detected=True FAILED (failures=5)  <- batch swallows failures and does not report them (no partial status)

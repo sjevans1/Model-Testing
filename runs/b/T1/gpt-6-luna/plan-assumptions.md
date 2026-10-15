@@ -1,0 +1,12 @@
+# Plan assumptions
+
+These are planning assumptions, not facts established by FACTS.md. Validate them in WP0 before committing to implementation. Unresolved options are identified as decisions in `plan.md`.
+
+- Initial source access is read-only. The business asks employees to query sources, and FACTS states there is no agentic automation; therefore the proposed first release does not write to ERP, warehouse, database or object-storage sources. Any write use case is out of scope until separately specified and approved.
+- Existing deployed application services, Keycloak realms/roles, PostgreSQL, object storage, audit table, CI and monitoring are the platform to extend rather than replace. The precise deployment/orchestration topology is not assumed.
+- “Customer data stays within the customer's region” applies to source-derived content, indexes/embeddings if introduced, backups, logs/traces that could contain customer data, and any LLM processing. Confirm contractual interpretation and provider availability before routing content.
+- Customer administrators may approve only data scopes their organization is entitled to expose; their source-system permissions and OpenJM entitlements are not interchangeable. Source-specific authorization fidelity must be verified before making imported data searchable.
+- The current `internal` and `confidential` classes are the only established classes. No automatic classification, additional labels, source-native ACL equivalence, column masking or per-document ACL capability is presumed to exist.
+- Source vendors, versions, supported APIs, source-side credentials, sync frequency, volumes, customer regions, performance/availability/cost targets, secret-management facility, LLM providers and retention settings are not specified. The plan intentionally leaves these as WP0 decisions rather than inventing values or capabilities.
+- A vector database, embedding model/pipeline, reranker, managed LLM gateway, and formal approval workflow are not selected or assumed to exist. Any such component requires a separate selection/security review and implementation before use.
+- Deletion within 30 days is interpreted to cover OpenJM-held content and derived copies (including indexes and embeddings if introduced); the source system's original records remain controlled by its owner unless a separate agreement says otherwise. Backup and provider deletion semantics must be verified against the commitment.

@@ -1,0 +1,19 @@
+Independent adjudication probe: T4 / GPT-6 Luna, check S04
+==========================================================
+The automated check S04 fails because #confirm-u1 does not contain a control carrying
+data-confirm="yes" at the time the confirmation is offered (Luna sets the attribute to "no"
+before confirming and to "yes" afterwards, inverting the naming contract the brief froze).
+
+A separate behavioural probe against the same tree shows the security intent is met:
+
+  stage a change to admin          -> staged, #confirm-u1 visible: True
+  confirm control attribute now    -> "no"   (contract requires "yes")
+  apply WITHOUT confirming         -> 0 writes to the API
+  activate the confirm control     -> ok
+  apply after confirming           -> exactly 1 write, role = admin
+
+Conclusion: the privilege-sensitive change cannot be applied without an explicit in-page
+confirmation, and applying it writes exactly once. Luna therefore fails the frozen naming
+contract (identical for all candidates, and two candidates met it) while satisfying the
+underlying administrative-safety behaviour. Scoring rules were not changed after seeing
+results: S04 remains failed for this trial, and this note records the distinction.

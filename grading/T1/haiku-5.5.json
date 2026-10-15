@@ -1,0 +1,127 @@
+{
+  "task": "T1",
+  "model": "claude-haiku-5-5",
+  "label": "haiku-5.5",
+  "workdir": "/home/sjeva/bench/model-testing/runs/b/T1/haiku-5.5",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "D01",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'functional requirement' present"
+    },
+    {
+      "id": "D02",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'nonfunctional' present"
+    },
+    {
+      "id": "D03",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'ingestion' present"
+    },
+    {
+      "id": "D04",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'connector' present"
+    },
+    {
+      "id": "D05",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'retrieval' present"
+    },
+    {
+      "id": "D06",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'classification' present"
+    },
+    {
+      "id": "D07",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'tenant isolation' present"
+    },
+    {
+      "id": "D08",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'audit' present"
+    },
+    {
+      "id": "D09",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'monitoring' present"
+    },
+    {
+      "id": "D10",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'approval' present"
+    },
+    {
+      "id": "D11",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'testing' present"
+    },
+    {
+      "id": "D12",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'acceptance' present"
+    },
+    {
+      "id": "D13",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'deployment' present"
+    },
+    {
+      "id": "D14",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'rollback' present"
+    },
+    {
+      "id": "D15",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'work package' present"
+    },
+    {
+      "id": "D16",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'dependenc' present"
+    },
+    {
+      "id": "D91",
+      "group": "functional",
+      "passed": true,
+      "detail": "deliverable length 28307 chars"
+    }
+  ],
+  "categories": {
+    "instruction": [
+      1.0,
+      "deliverables: ['plan.md', 'BRIEF.md', 'FACTS.md', 'plan-assumptions.md']"
+    ],
+    "testing": [
+      0.5,
+      "0 test file(s) added (not required by this task)"
+    ],
+    "maintainability": [
+      1.0,
+      "2 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": true
+}

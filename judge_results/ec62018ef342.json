@@ -1,0 +1,12 @@
+{
+  "functional": 90,
+  "security": 92,
+  "instruction": 87,
+  "maintainability": 89,
+  "testing": 90,
+  "efficiency": 85,
+  "critical_failures": [],
+  "rationale": "Covers all 11 required sections, keeps the three planes distinct, and aligns tightly with FACTS.md using consistent EXISTS/EXTEND/CONFIG/NEW tagging plus a full assumption file, so no capability is invented. Security is strong: three-layer fail-closed enforcement, tenant predicates inside vector queries, DB-grant-backed audit and operator scope, deny-by-default tests. Work packages are bounded with definitions of done and explicit sequencing. Deductions for placeholder targets, repetitive classification restatements, some unverified assumptions, and the truncated final assumption line.",
+  "_task": "T1",
+  "_label": "haiku-5.5"
+}

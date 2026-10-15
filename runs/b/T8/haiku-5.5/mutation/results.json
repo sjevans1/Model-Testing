@@ -1,0 +1,267 @@
+{
+  "reference": {
+    "exit": 0,
+    "summary": "OK",
+    "failing": []
+  },
+  "mutants": [
+    {
+      "id": "M1",
+      "claim": "claim1",
+      "desc": "get_report has no tenant scope (defect D1)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=4)",
+      "failing": [
+        "FAIL: test_foreign_admin_cannot_read_confidential_report",
+        "FAIL: test_foreign_admin_cannot_read_report",
+        "FAIL: test_foreign_read_error_is_identical_to_missing_id",
+        "FAIL: test_tenant_id_in_payload_cannot_move_report_into_another_tenant"
+      ]
+    },
+    {
+      "id": "M2",
+      "claim": "claim1",
+      "desc": "get_report ignores classification (defect D3)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=2)",
+      "failing": [
+        "FAIL: test_confidential_report_hidden_from_analyst_and_viewer",
+        "FAIL: test_demoted_admin_loses_confidential_access"
+      ]
+    },
+    {
+      "id": "M3",
+      "claim": "claim1",
+      "desc": "get_report reports a foreign tenant as Forbidden, not NotFound (error-oracle)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=1, errors=3)",
+      "failing": [
+        "ERROR: test_foreign_admin_cannot_read_confidential_report",
+        "ERROR: test_foreign_admin_cannot_read_report",
+        "ERROR: test_tenant_id_in_payload_cannot_move_report_into_another_tenant",
+        "FAIL: test_foreign_read_error_is_identical_to_missing_id"
+      ]
+    },
+    {
+      "id": "M4",
+      "claim": "claim1",
+      "desc": "revoke_report has no tenant check (defect D2)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=1)",
+      "failing": [
+        "FAIL: test_foreign_user_cannot_revoke_report"
+      ]
+    },
+    {
+      "id": "M5",
+      "claim": "claim1",
+      "desc": "revoke_report has no role check (defect D2)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=3)",
+      "failing": [
+        "FAIL: test_demoted_admin_cannot_revoke",
+        "FAIL: test_unknown_role_cannot_revoke",
+        "FAIL: test_viewer_cannot_revoke"
+      ]
+    },
+    {
+      "id": "M6",
+      "claim": "claim1",
+      "desc": "authz fails open for unknown roles (defect D4)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=1)",
+      "failing": [
+        "FAIL: test_unknown_role_cannot_revoke"
+      ]
+    },
+    {
+      "id": "M7",
+      "claim": "claim1",
+      "desc": "save trusts payload tenant_id over the actor (defect D5)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=2)",
+      "failing": [
+        "FAIL: test_tenant_id_in_batch_payload_is_ignored",
+        "FAIL: test_tenant_id_in_payload_cannot_move_report_into_another_tenant"
+      ]
+    },
+    {
+      "id": "M8",
+      "claim": "claim1",
+      "desc": "list_reports is not tenant scoped (defect D6)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=2)",
+      "failing": [
+        "FAIL: test_foreign_user_cannot_see_report_in_list",
+        "FAIL: test_list_contains_own_tenant_reports_only"
+      ]
+    },
+    {
+      "id": "M9",
+      "claim": "claim1",
+      "desc": "list_reports lists revoked reports as active (revoked hard-coded False, filter removed; defect D6)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=1)",
+      "failing": [
+        "FAIL: test_revoked_report_is_not_listed_as_an_active_saved_report"
+      ]
+    },
+    {
+      "id": "M10",
+      "claim": "claim1",
+      "desc": "list_reports ignores classification",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=2)",
+      "failing": [
+        "FAIL: test_confidential_report_not_listed_for_analyst",
+        "FAIL: test_demoted_admin_loses_confidential_access"
+      ]
+    },
+    {
+      "id": "M11",
+      "claim": "claim1",
+      "desc": "viewer can save a report (write gate removed)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=2)",
+      "failing": [
+        "FAIL: test_unauthorised_item_is_not_counted_as_saved",
+        "FAIL: test_viewer_cannot_save_a_report"
+      ]
+    },
+    {
+      "id": "M12",
+      "claim": "claim1",
+      "desc": "unknown classification accepted on save (bypasses confidential gate)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=1)",
+      "failing": [
+        "FAIL: test_unknown_classification_is_rejected"
+      ]
+    },
+    {
+      "id": "M13",
+      "claim": "claim2",
+      "desc": "revoke rewrites the stored snapshot payload",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=4)",
+      "failing": [
+        "FAIL: test_content_hash_and_payload_are_stable_across_revocation",
+        "FAIL: test_revoke_leaves_snapshot_row_byte_identical",
+        "FAIL: test_revoked_report_content_still_readable_by_owner_tenant",
+        "FAIL: test_revoking_twice_keeps_snapshot_and_revoked_state"
+      ]
+    },
+    {
+      "id": "M14",
+      "claim": "claim2",
+      "desc": "revoke recomputes the content hash on the snapshot",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=4)",
+      "failing": [
+        "FAIL: test_content_hash_and_payload_are_stable_across_revocation",
+        "FAIL: test_revoke_leaves_snapshot_row_byte_identical",
+        "FAIL: test_revoking_twice_keeps_snapshot_and_revoked_state",
+        "FAIL: test_stored_hash_matches_canonical_payload_before_and_after_revoke"
+      ]
+    },
+    {
+      "id": "M15",
+      "claim": "claim2",
+      "desc": "revoke deletes the snapshot row",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (errors=6)",
+      "failing": [
+        "ERROR: test_content_hash_and_payload_are_stable_across_revocation",
+        "ERROR: test_revoke_leaves_snapshot_row_byte_identical",
+        "ERROR: test_revoked_report_content_still_readable_by_owner_tenant",
+        "ERROR: test_revoked_report_is_not_listed_as_an_active_saved_report",
+        "ERROR: test_revoking_twice_keeps_snapshot_and_revoked_state",
+        "ERROR: test_stored_hash_matches_canonical_payload_before_and_after_revoke"
+      ]
+    },
+    {
+      "id": "M16",
+      "claim": "claim2",
+      "desc": "revoke changes the report name (non-status column edited)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=1)",
+      "failing": [
+        "FAIL: test_revoke_only_changes_report_status_columns"
+      ]
+    },
+    {
+      "id": "M17",
+      "claim": "claim3",
+      "desc": "batch always reports status complete (defect D8)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=5)",
+      "failing": [
+        "FAIL: test_all_items_failing_reports_zero_and_not_complete",
+        "FAIL: test_confidential_item_rejected_for_analyst_is_not_counted",
+        "FAIL: test_invalid_item_is_not_counted_and_status_is_not_complete",
+        "FAIL: test_non_dict_items_are_not_reported_as_saved",
+        "FAIL: test_unauthorised_item_is_not_counted_as_saved"
+      ]
+    },
+    {
+      "id": "M18",
+      "claim": "claim3",
+      "desc": "batch applied counts requested items, not saved (defect D8)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=5)",
+      "failing": [
+        "FAIL: test_all_items_failing_reports_zero_and_not_complete",
+        "FAIL: test_confidential_item_rejected_for_analyst_is_not_counted",
+        "FAIL: test_invalid_item_is_not_counted_and_status_is_not_complete",
+        "FAIL: test_non_dict_items_are_not_reported_as_saved",
+        "FAIL: test_unauthorised_item_is_not_counted_as_saved"
+      ]
+    },
+    {
+      "id": "M19",
+      "claim": "claim3",
+      "desc": "batch status complete when any item saved",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=3)",
+      "failing": [
+        "FAIL: test_confidential_item_rejected_for_analyst_is_not_counted",
+        "FAIL: test_invalid_item_is_not_counted_and_status_is_not_complete",
+        "FAIL: test_non_dict_items_are_not_reported_as_saved"
+      ]
+    },
+    {
+      "id": "M20",
+      "claim": "claim3",
+      "desc": "batch swallows failures and does not report them (no partial status)",
+      "detected": true,
+      "exit": 1,
+      "summary": "FAILED (failures=5)",
+      "failing": [
+        "FAIL: test_all_items_failing_reports_zero_and_not_complete",
+        "FAIL: test_confidential_item_rejected_for_analyst_is_not_counted",
+        "FAIL: test_invalid_item_is_not_counted_and_status_is_not_complete",
+        "FAIL: test_non_dict_items_are_not_reported_as_saved",
+        "FAIL: test_unauthorised_item_is_not_counted_as_saved"
+      ]
+    }
+  ]
+}

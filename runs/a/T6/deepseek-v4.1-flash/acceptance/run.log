@@ -1,0 +1,15 @@
+test_manifest_lists_every_test_module (tests.test_acceptance_manifest.TestAcceptanceManifest.test_manifest_lists_every_test_module) ... ok
+test_per_test_records_are_successful (tests.test_acceptance_manifest.TestAcceptanceManifest.test_per_test_records_are_successful)
+The nested export check must actually finish, not merely print some 'ok' lines. ... ok
+test_mean_empty_raises (tests.test_tally.TestTally.test_mean_empty_raises) ... ok
+test_mean_simple (tests.test_tally.TestTally.test_mean_simple) ... ok
+test_median_even_length (tests.test_tally.TestTally.test_median_even_length) ... ok
+test_median_odd_length (tests.test_tally.TestTally.test_median_odd_length) ... ok
+test_percentile_bounds (tests.test_tally.TestTally.test_percentile_bounds) ... ok
+test_percentile_p90 (tests.test_tally.TestTally.test_percentile_p90) ... ok
+test_summarize_shape (tests.test_tally.TestTally.test_summarize_shape) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 8.067s
+
+OK

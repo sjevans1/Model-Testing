@@ -1,0 +1,14 @@
+I wrote `review.md` in this directory and did not modify `pr.diff` or the code. The recommendation is **do not merge**.
+
+Blocking findings:
+- **B1, `request_role_change`:** the admin check and role validation were removed. A viewer can file a request for any role, and `superuser` gets stored as a role.
+- **B2, `approve`:** no admin, tenant, or status check, and the missing-request guard was removed. A tenant-t1 admin can escalate a tenant-t2 user to admin. Replaying an approve reapplies the role and bumps the version.
+- **B3, new `change_role_direct` and `apply_bulk`:** no admin or tenant check, no role validation, no audit row. A viewer can set a cross-tenant user to admin. Bulk reports success for a nonexistent user.
+- **B4, tests:** three tests covering non-admin, bad role, and cross-tenant behaviour were deleted. The three remaining tests cover none of the contractual properties.
+- **B5, `list_pending`:** no tenant filter, so any caller sees every tenant's pending requests.
+
+Non-blocking findings are approve not writing an audit row, missing rowcount checks, and the switch to uuid4 request ids (accepted, but it is not an idempotency key).
+
+Evidence: the existing suite passes 3/3 (`python3 -m unittest discover -s tests -v` in `sources/`), but it does not test the contract. I ran a probe script against `sources/src/roleservice.py` from `$TMPDIR/probe_t7.py`. It confirmed each behaviour above. I did not re-run the deleted pre-PR tests verbatim; the report says so.
+
+Residual uncertainty: the calling API layer is not in the sandbox, so it may enforce some of these checks. The report treats the service as the enforcement point and asks the owners to confirm.

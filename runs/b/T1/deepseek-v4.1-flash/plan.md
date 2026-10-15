@@ -1,0 +1,786 @@
+# Solution Plan — governed enterprise AI application over Knowledge and Data
+
+Scope of this document: an implementation-oriented plan for connecting ERP databases, a data
+warehouse, PostgreSQL and SQL Server instances, object storage, company documents, policies and
+SOPs into one governed application whose answers come from an LLM, with three administration
+planes kept separate.
+
+Everything below is anchored to `FACTS.md`. Where a recommendation needs something `FACTS.md`
+does not grant, it carries an explicit tag and, where it is a judgement call about the
+environment rather than a product capability, an assumption reference (`A-n`, see
+`plan-assumptions.md`). Nothing here claims a capability that `FACTS.md` lists under
+"Explicitly not available".
+
+## 0. How to read this plan
+
+### 0.1 Status tags used on every work item
+
+- **[CFG]** configuration-only — achievable with what is deployed today, no code change.
+- **[EXT]** extension of something that exists (new fields, new stage, new endpoint on an
+  existing service).
+- **[NEW]** must be built; nothing today performs this function.
+
+### 0.2 Fact index
+
+These anchors are cited throughout as `[F<n>]`.
+
+| Ref | Fact (from FACTS.md) |
+|-----|----------------------|
+| F1 | Multi-tenant SaaS; Ubuntu 24.04; PostgreSQL 16.15; Keycloak 26.7.4; Node 22 and Python 3.11 services; deployed as non-root `openjm`. |
+| F2 | Every request carries a tenant claim; row-level tenant scoping enforced in application code and covered by tests; no tenant sees another's data. |
+| F3 | Keycloak realm per tenant; OIDC with PKCE; group-to-role mapping; roles `viewer` < `analyst` < `admin`, plus platform-operator roles customers never see. |
+| F4 | Audit table: actor, tenant, action, object, detail; every write and every privileged read; append-only. |
+| F5 | Workspaces: named container grouping a customer's folders and resources; workspace membership is the coarse authorization unit today. |
+| F6 | Document ingestion PDF/DOCX ≤ 25 MB into object storage, with text extraction and a per-document classification of `internal` or `confidential`. |
+| F7 | Chunking and embeddings are **not** in production. |
+| F8 | Retrieval service searches **whole documents** with PostgreSQL full-text search, filtered by workspace membership; no vector store in production. |
+| F9 | Connectors: one REST source connector for JSON APIs. |
+| F10 | Monitoring: structured logs, Prometheus metrics for request latency and error rates, alert on failed background jobs. |
+| F11 | CI: GitHub Actions with build, unit and integration tests, container build and signed release; every merge requires review and green checks. |
+| F12 | Contract: customer data stays in the customer's region; no cross-tenant training; no cross-tenant retrieval; tenant admin can request a data export; a deletion request must remove content **and embeddings** within 30 days. |
+| F13 | Contract: every answer a user can act on must be traceable to the sources it used; answers the system is not confident about must say so rather than guess. |
+| F14 | Contract: confidential documents readable only by tenant administrators, never by `viewer` or `analyst`, regardless of workspace membership. |
+| F15 | Contract: operator plane can suspend a tenant, rotate a connector credential and see per-tenant usage — without being able to read customer content. |
+| F16 | Contract: customer administrators manage their own users, groups and data sources, and cannot see or change anything belonging to another customer. |
+| F17 | Contract: administrative changes to access must be deliberate, audited, and reversible. |
+| F18 | Not available: no vector DB, no embedding pipeline, no reranking; no ERP/warehouse/SQL Server/object-storage connector; no policy engine beyond Keycloak roles + workspace membership; no document-level ACLs beyond `internal`/`confidential`; no managed LLM gateway (per-provider API keys today); no agentic automation and no approval workflow framework to reuse. |
+
+### 0.3 Capability gap register (scenario input → status today)
+
+This is the honest baseline the rest of the plan builds on. It is why large parts of the plan
+are [NEW] rather than [CFG].
+
+| Scenario input | Status today | Tag |
+|---|---|---|
+| Company documents, policies, SOPs (PDF/DOCX) | Ingestion, extraction, `internal`/`confidential` classification exist [F6]; whole-document FTS retrieval exists [F8] | [EXT] for better retrieval, [CFG] for more documents |
+| PostgreSQL instances | No connector [F9, F18]; the platform's own DB is PostgreSQL 16.15 [F1], which is an advantage, not a connector | [NEW] |
+| SQL Server instances | No connector [F18] | [NEW] |
+| Data warehouse (Snowflake/BigQuery/Redshift — exact engine unknown, A-6) | No connector [F18] | [NEW] |
+| ERP (SAP/NetSuite/Dynamics — exact product unknown, A-6) | No connector [F18] | [NEW] |
+| Object storage as a source | No connector [F18]; object storage is used as ingestion *sink* for documents [F6] | [NEW] |
+| JSON REST APIs | REST connector exists [F9] | [CFG]/[EXT] |
+| LLM answering | Possible via per-provider API keys, but no managed gateway [F18] | [NEW] gateway + governance |
+| Permission-aware retrieval over chunks | No chunking, no embeddings, no vector store [F7, F18] | [NEW] |
+| Three administration planes | Roles split exists in Keycloak incl. operator roles customers never see [F3]; workspace membership is the only fine-grained unit [F5] | [EXT] |
+
+---
+
+## 1. Functional requirements
+
+Numbered, testable. Each carries its fact anchor and the plane(s) it touches. Plane shorthand:
+**OP** = OpenJM operator control plane, **CA** = customer organisation administration plane,
+**EU** = end-user experience.
+
+### 1.1 End-user experience (EU)
+
+- **FR-1** A user can ask a natural-language question in one interface and receive an answer
+  assembled from Knowledge (documents, policies, SOPs) and/or Data (relational sources,
+  warehouse) that the user is authorised to use. Anchors [F8], [F13], [F5], [F14]. Plane: EU.
+- **FR-2** Every answer that a user could act on states the sources it used: for document-
+  backed answers a document identity (doc id + version) and the passage location; for
+  data-backed answers the source, dataset/object and the query result set identity. Anchor
+  [F13]. Plane: EU.
+- **FR-3** When the system cannot ground an answer to a sufficient degree, it says it is not
+  confident / not sufficiently covered, rather than producing an ungrounded answer. Anchor
+  [F13]. Plane: EU.
+- **FR-4** Retrieval is authorisation-filtered *before* the LLM sees anything: the candidate
+  set for a question contains only sources the asking user is entitled to. Anchors [F2],
+  [F5], [F8], [F14]. Plane: EU (enforced by the platform).
+- **FR-5** `confidential` documents are never surfaced to `viewer` or `analyst`, inside any
+  workspace. Anchor [F14]. Plane: EU.
+- **FR-6** The user sees, per answer, which connected sources were consulted and which were
+  skipped because of entitlement, so that "no answer" is distinguishable from "no permission".
+  Anchors [F13], [F14]. Plane: EU.
+- **FR-7** Conversational follow-ups keep the same authorisation context; a follow-up cannot
+  widen the source set of the original question beyond the user's entitlements. Anchors [F2],
+  [F5]. Plane: EU.
+
+### 1.2 Customer organisation administration plane (CA)
+
+- **FR-8** A customer administrator manages that customer's users, groups and data sources,
+  and nothing belonging to another customer. Anchor [F16]. Plane: CA.
+- **FR-9** A customer administrator registers and configures a data source (connection target,
+  scope of objects/tables to expose, refresh schedule) within their tenant. Anchors [F16],
+  [F9] (connector framework is new, A-1). Plane: CA.
+- **FR-10** A customer administrator assigns users to groups and workspaces, and that
+  assignment changes what those users can retrieve. Anchors [F5], [F3]. Plane: CA.
+- **FR-11** Every access-affecting change in the CA plane is deliberate (an explicit saved
+  action, not an implicit side effect), recorded in audit, and reversible. Anchor [F17].
+  Plane: CA.
+- **FR-12** A customer administrator can classify a data source / dataset in the same
+  `internal`/`confidential` vocabulary already used for documents, so the same gate applies to
+  Data as to Knowledge. Anchors [F6], [F14]; dataset-level classification does not exist today
+  (A-3). Plane: CA.
+- **FR-13** A customer administrator can request a tenant data export, and can raise a deletion
+  request for specified content. Anchors [F12], [F16]. Plane: CA.
+
+### 1.3 OpenJM operator control plane (OP)
+
+- **FR-14** An operator can suspend and reinstate a tenant; suspension stops end-user querying
+  and background ingestion for that tenant without deleting its data. Anchor [F15]. Plane: OP.
+- **FR-15** An operator can rotate a connector credential for a tenant without the operator
+  being able to see the credential value and without reading the tenant's content. Anchors
+  [F15], [F18] (connector credential management is new, A-1). Plane: OP.
+- **FR-16** An operator can see per-tenant usage (queries, tokens, storage, ingestion volume,
+  connector health) as metadata only. Anchor [F15]. Plane: OP.
+- **FR-17** The operator plane has no code path that returns customer content, and this is a
+  test-enforced property, not a policy. Anchor [F15]. Plane: OP.
+- **FR-18** An operator manages entitlements (which source types, volumes, regions a tenant
+  may use) as platform-wide policy. Anchor [F15]. Plane: OP.
+- **FR-19** Platform-wide configuration that is genuinely platform-wide (source-type
+  enablement, LLM provider catalogue, retention defaults, SLO thresholds) is changed only in
+  the OP plane and only with audit. Anchors [F15], [F4]. Plane: OP.
+
+### 1.4 Cross-plane invariants (functional)
+
+- **FR-20** The three planes are separate API surfaces and separate authorisation domains; an
+  operator role cannot act as a customer administrator and a customer administrator cannot act
+  as an operator. Anchors [F3], [F15], [F16].
+- **FR-21** The application performs no unattended write against a customer source system (no
+  ERP/DW/SQL write, no object-storage mutation on behalf of a source). Reading and indexing are
+  in scope; writing to sources is out of scope for this plan. Anchor [F18]; see section 8.
+
+---
+
+## 2. Nonfunctional requirements
+
+### 2.1 Performance
+
+The product has no stated latency budget in `FACTS.md`, so the numbers below are proposed SLOs
+recorded as assumptions (A-8) and must be ratified before build; the *structure* of the
+requirement is not an assumption.
+
+- **NFR-P1** Retrieval (candidate generation + authorisation filter) p95 ≤ 1.5 s for a
+  knowledge query and ≤ 3 s for a cross-source query, measured server-side.
+- **NFR-P2** End-to-end answer (question → grounded answer with citations) p95 ≤ 8 s for
+  knowledge-only, ≤ 15 s for queries that execute against a relational source.
+- **NFR-P3** Ingestion freshness: a change in a configured relational source is visible to
+  retrieval within the source's configured refresh window; failure to meet it raises a metric
+  (§7), not a silent staleness.
+- **NFR-P4** Document indexing lag (upload → retrievable chunk) p95 ≤ 10 min for a 25 MB
+  document. Derives from the existing 25 MB ceiling [F6].
+- **NFR-P5** The permission filter is applied on the hot path and must not degrade throughput
+  proportionally to tenant size — i.e. filtering is indexed/served by the store, not applied
+  as an in-memory post-filter over an unbounded candidate set (A-9).
+- **NFR-P6** Performance targets are enforced per tenant as well as in aggregate; one tenant's
+  load must not breach another tenant's SLO (ties to §6 and [F2]).
+
+### 2.2 Cost
+
+- **NFR-C1** Every LLM call, embedding call and query execution is metered per tenant, because
+  per-tenant usage visibility is contractual [F15]. Metering is therefore a functional
+  prerequisite for the OP usage view, not an optimisation.
+- **NFR-C2** Cost is bounded per tenant by entitlement [F18 operator entitlements / FR-18]:
+  token quotas, ingestion volumes, storage quotas. Exceeding a quota degrades or queues, it
+  does not silently bill.
+- **NFR-C3** Embedding cost is a one-off per chunk plus incremental on change; the plan must
+  avoid re-embedding unchanged content (content-hash keyed, A-10). Deletion must also free
+  embedding cost, not just content [F12].
+- **NFR-C4** Model choice is per request class (cheap model for classification/routing,
+  stronger model for answer synthesis), configured in the OP provider catalogue (FR-19, A-11).
+- **NFR-C5** Cost per answer is attributable to a tenant, a user and a source, so chargeback
+  and abuse detection are possible without reading content [F15].
+
+### 2.3 Availability and resilience
+
+- **NFR-A1** Availability target for the end-user query path: 99.5 % monthly (A-8), excluding
+  scheduled maintenance. The plan should not promise more than the existing platform implies.
+- **NFR-A2** Degradation is explicit, never silent: if the new vector index is unavailable,
+  retrieval falls back to the existing full-text search [F8] and the answer states that
+  semantic retrieval was degraded (FR-3, FR-6). If the LLM is unavailable, the system returns
+  retrieved sources without synthesis rather than failing opaquely.
+- **NFR-A3** Connector and ingestion failure is isolated per tenant and per source: one broken
+  connector cannot fail the query path for other tenants [F2, F15].
+- **NFR-A4** Every new stateful component (vector index, secret store, gateway) has a documented
+  single-point-of-failure position and a restart-without-data-loss path.
+- **NFR-A5** Tenant suspension [FR-14] is a fast runtime control (seconds, not a migration) and
+  is itself reversible [F17].
+
+### 2.4 Privacy, security and residency
+
+- **NFR-PR1** Customer content does not leave the customer's region [F12]. This constrains
+  every new component: index, cache, gateway egress, logs. Regional pinning of the *new*
+  components is work to be done (A-2).
+- **NFR-PR2** No cross-tenant retrieval and no cross-tenant training [F12]: retrieval indexes
+  are tenant-partitioned (§6), and any LLM provider contract must contractually exclude
+  training on submitted content (A-4).
+- **NFR-PR3** Content sent to an LLM is minimised and classified: `confidential` content is
+  only ever in a request originating from a tenant administrator's session [F14].
+- **NFR-PR4** Credentials for sources and providers are stored in a secret store, never in
+  application config or logs, and are rotatable without content access [F15, FR-15]. No central
+  secret store is described today [F18], so this is [NEW] (A-1).
+- **NFR-PR5** Logs, metrics and traces must not contain customer content, credentials or raw
+  prompt bodies; existing structured logging [F10] is extended with a redaction rule
+  (A-12, [EXT]).
+- **NFR-PR6** Encryption in transit for all connector traffic and provider calls; encryption at
+  rest for the vector index, caches and the secret store (A-13).
+- **NFR-PR7** Export and deletion [F12] operate on content **and** derived artifacts
+  (chunks, embeddings, caches); deletion completes within 30 days and is provable from audit.
+
+### 2.5 Operability
+
+- **NFR-O1** Reuse the existing observability stack — structured logs, Prometheus latency and
+  error metrics, failed-job alerts [F10] — extended with the metrics in §7 rather than a new
+  monitoring product (A-14).
+- **NFR-O2** Every new asynchronous stage (extraction, chunking, embedding, indexing, export,
+  deletion) is a background job with the same failure alerting as existing jobs [F10], plus a
+  dead-letter/retry policy.
+- **NFR-O3** Every new component has a runbook: start/stop, health check, drain, rollback
+  (§10), and a documented failure mode referencing NFR-A2.
+- **NFR-O4** Operational actions available to operators (suspend, rotate credential, adjust
+  entitlement) are self-service in the OP plane [FR-14, FR-15, FR-18] and audited [F4].
+- **NFR-O5** Every capability carries its status tag so that operational documentation and
+  on-call expectations do not assume a capability that does not exist.
+
+### 2.6 Compliance and auditability (nonfunctional)
+
+- **NFR-CP1** Confidentiality gate [F14], traceability [F13], residency [F12] and reversibility
+  [F17] are enforced in code and verified by automated tests (§9), not by process alone.
+- **NFR-CP2** Audit is append-only [F4] and must remain so after extension: new writers append,
+  none mutate or delete audit rows.
+
+---
+
+## 3. Data ingestion and connectors
+
+Data = ERP, data warehouse, PostgreSQL, SQL Server. Knowledge = documents/policies/SOPs handled
+in §4. JSON REST [F9] already exists and is reused, not rebuilt.
+
+### 3.1 Connector framework [NEW]
+
+No structured-source connector exists [F9, F18]. Building four connectors as four unrelated
+projects is the main delivery risk; the plan therefore introduces one framework first.
+
+- A tenant-scoped connector registry: each connector instance belongs to exactly one tenant and
+  one configured data source [F2, F16, FR-9].
+- A common connector contract: `probe/healthcheck`, `discover` (list schemas/tables/objects),
+  `extract` (incremental pull by watermark or change token), `normalise` (to a common
+  row/document shape), `report` (rows read, bytes, lag).
+- Credentials resolved from the secret store at run time only [NFR-PR4]; the connector process
+  never receives credentials for a tenant other than the one it is running for.
+- Read-only enforcement: the connector's database principal is granted `SELECT` on allowlisted
+  objects only; the framework has no write code path [FR-21, NFR-PR3].
+- Scheduling reuses the existing background-job mechanism that already alerts on failure [F10].
+
+### 3.2 Object storage connector [NEW]
+
+Today object storage is the ingestion sink for documents [F6], not a queryable source [F18].
+
+- Enumerate buckets/prefixes for the tenant, pull new/changed objects, route by type: PDF/DOCX
+  into the existing document pipeline [F6]; other text formats into extraction.
+- Tenant prefix discipline: a connector is bound to a tenant prefix; cross-prefix reads are a
+  code path that must not exist [F2].
+- Idempotency by object ETag/version so a re-scan does not duplicate content or re-embed
+  (NFR-C3).
+
+### 3.3 Relational connectors [NEW] — PostgreSQL, SQL Server, data warehouse
+
+- **PostgreSQL** first: the platform already runs PostgreSQL 16.15 [F1] and the team already
+  has driver, migration and connection-pooling knowledge. Lowest-risk, and validates the
+  framework. Incremental extraction by watermark column or logical replication if available
+  (A-15).
+- **SQL Server** second: same framework, different driver and type mapping.
+- **Data warehouse** third: engine unknown (A-6). The framework contract is engine-agnostic;
+  the warehouse adds a cost-governance concern (query cost, warehouse compute) that must be
+  quota-bound per tenant (NFR-C2).
+- **ERP** last and separately bounded: ERP schemas are large, semantically dense and
+  customer-specific (A-6). Recommend surfacing ERP through curated, named *views or extracts*
+  rather than raw table access, and treating the first ERP integration as a discovery project
+  with an explicit exit gate.
+
+### 3.4 Ingestion mechanics common to all connectors [NEW]
+
+- **Extraction scope is an administrative decision**: what is exposed is chosen in the CA
+  plane [FR-9, F16], not inferred by the model. This is the single most important control
+  against the LLM reading data it should not.
+- **Profiling and schema snapshot**: on registration, capture column names, types, null rates
+  and cardinality (metadata only) to drive classification and query planning.
+- **Classification at ingest** (see §5): each exposed object/table/column set receives an
+  `internal`/`confidential` label defaulting to the most restrictive value until an
+  administrator sets it (A-3, FR-12). Default-deny is the safe default (NFR-CP1).
+- **Provenance record per extracted batch**: source, object, watermark, row count, ingest time.
+  This is what makes a data-backed answer traceable [F13] and auditable [F4].
+- **Residency**: connector runs in the tenant's region; extraction never transits another
+  region [F12, NFR-PR1]. Regional placement is new work (A-2).
+- **Reachability**: the connector must be able to reach the customer's source system from the
+  tenant's region; the network path (VPN / private link / public endpoint) is assumed to be
+  provided and is not designed here (A-7).
+- **Volume and quota**: per-tenant ingestion quotas [NFR-C2] enforced at the queue, with back-
+  pressure rather than silent drop.
+
+### 3.5 Data shape handed to the retrieval/generation layer
+
+Structured extraction produces **curated, typed, tenant-scoped projections** (materialised
+views / extracts plus lightweight semantic annotations for column meaning), not a raw copy of
+the source schema. Rationale: the governed question-answering layer must never be able to
+construct a query that reaches an object the tenant did not expose (see §4.4). This is [NEW].
+
+---
+
+## 4. Knowledge ingestion and permission-aware retrieval
+
+Knowledge = documents, policies, SOPs. The document path exists [F6]; chunking, embeddings and
+vector retrieval do not [F7, F18].
+
+### 4.1 Chunking [NEW]
+
+- Documents are chunked with structure awareness (headings, clause boundaries, tables kept
+  intact where possible) rather than fixed-size windows, because policies and SOPs answer
+  questions by clause.
+- Each chunk inherits, immutably, the parent document's classification and provenance
+  (doc id, version, page/offset) [F6, F14].
+- **Invariant:** a chunk can never be *less* restricted than its parent document. Chunk-level
+  metadata may only tighten. This is the mechanism that keeps the [F14] gate true after
+  retrieval granularity changes from whole-document [F8] to chunk.
+
+### 4.2 Embeddings and vector index [NEW]
+
+- An embedding pipeline generates vectors per chunk and stores them in a vector index that
+  does not exist today [F18, A-5].
+- The index is **partitioned per tenant** — separate namespace/collection per tenant, with the
+  tenant id a mandatory component of every read and write key (§6, [F12]).
+- Embeddings are keyed by content hash so unchanged chunks are not re-embedded (NFR-C3).
+- Deletion of a document removes its vectors within the 30-day window [F12, NFR-PR7]; a
+  tombstone/deletion-queue design is required because vector deletion must be provable.
+- Reranking does not exist [F18] and is *not* assumed: retrieval quality must be acceptable
+  from hybrid search alone for v1. If reranking is later added it is [NEW] and enters through
+  the same partition and classification filters (A-16).
+
+### 4.3 Retrieval: hybrid, permission-aware [EXT of the existing retrieval service]
+
+The existing service does whole-document, full-text, workspace-filtered search [F8]. It is
+extended rather than replaced, so that NFR-A2's fallback is the *old* path.
+
+Pipeline, in order:
+
+1. **Resolve the caller's authorisation context** from the request tenant claim [F2] and the
+   Keycloak role [F3]: tenant id, role (`viewer`/`analyst`/`admin`), workspace memberships [F5].
+2. **Compute the allowed filter**: tenant = caller's tenant AND (workspace ∈ caller's
+   workspaces) AND (classification = `internal` OR caller is tenant `admin`) — with the [F14]
+   rule taking precedence: `confidential` is visible only to tenant `admin`, **regardless of
+   workspace**, so the classification gate is an AND with the workspace gate, never an OR.
+3. **Retrieve** candidates from the vector index (semantic) and PostgreSQL full-text [F8]
+   (lexical), with the filter applied *in the store query*, not after fetching
+   (NFR-P5).
+4. **Merge and cap** candidate sets, preserving per-candidate provenance.
+5. **Assemble context** for the LLM from permitted candidates only. Nothing outside the filter
+   reaches the model (FR-4). Context assembly is tenant-pure: no shared or global context
+   buffer (§6).
+6. **Answer** with citations bound to the candidates actually used (FR-2, [F13]), plus a
+   confidence/coverage statement (FR-3) and a statement of which sources were skipped for
+   entitlement reasons (FR-6).
+7. **Record** the query and the retrieval decision for audit (§7, [F4]).
+
+### 4.4 Data retrieval (relational) [NEW]
+
+Question answering over ERP/warehouse/SQL Server needs a governed path that does not turn the
+LLM into an unrestricted SQL client.
+
+- **Governed semantic layer**: the LLM selects from a catalogue of pre-approved, tenant-scoped
+  queries/views (per dataset, with described columns), not arbitrary SQL against the source.
+  The model's output is a *selection and parameterisation*, never free-form DDL/DML.
+- **Parameterised execution** under a service identity scoped to the tenant and to the exposed
+  objects [§3.4, FR-21]. Row limits and query timeouts are enforced by the runner (NFR-C2).
+- **No writes**: the runner has no write path [FR-21, F18].
+- **Traceability**: the executed query identity, dataset and row count are recorded and
+  surfaced [F13] without exposing raw rows beyond what the user may see.
+- **Classification applies to Data too**: a `confidential` dataset is admin-only exactly as a
+  `confidential` document is (FR-12, [F14] logic extended to data by analogy — labelled as an
+  assumption, A-3, since [F14] speaks of documents).
+- **Text-to-SQL as a fallback** is explicitly a later, gated enhancement: it widens the surface
+  the model can reach and must be evaluated against §9's permission tests before adoption
+  (A-17).
+
+### 4.5 Document ingestion extensions to the existing path [EXT]
+
+- Carry extraction quality signals (OCR needed, empty pages, scanned PDF) so low-quality
+  documents produce an honest "insufficient coverage" answer (FR-3) instead of noise.
+- Version documents rather than overwrite, so citations remain resolvable after an update
+  [F13] and deletion can target a specific version [F12].
+- Keep the 25 MB ceiling [F6] for v1; raising it is separate, bounded work (A-18).
+
+---
+
+## 5. Classification and role enforcement
+
+### 5.1 What exists
+
+- Two-level document classification `internal` | `confidential` [F6].
+- Roles `viewer` < `analyst` < `admin`, plus operator roles customers never see [F3].
+- Workspace membership as the coarse authorization unit [F5].
+- No policy engine beyond those, and no document-level ACLs beyond the classification [F18].
+
+### 5.2 Enforcement model [EXT]
+
+This plan deliberately does **not** invent a policy engine — [F18] says there isn't one, and the
+contract's rules are expressible with the existing primitives plus dataset classification.
+
+Effective access decision for any retrieval unit (chunk or dataset):
+
+```
+allow(unit, principal) =
+      unit.tenant          == principal.tenant                     # [F2]
+  AND (unit.workspace ∈ principal.workspaces  OR unit.workspace is ⊤)  # [F5]
+  AND (unit.classification == internal
+       OR (unit.classification == confidential AND principal.role == admin))  # [F14]
+  AND unit.dataset_classification ≤ principal.max_classification      # new, for data (A-3)
+```
+
+Rules that follow directly from the facts:
+
+- **Classification beats workspace.** A `confidential` document is invisible to `viewer`/
+  `analyst` *even if they are members of the workspace containing it* [F14]. This is the one
+  place where the existing coarse model would otherwise leak, so it is called out as a named
+  test case (§9).
+- **Deny-by-default.** Units without an explicit classification, and newly discovered datasets,
+  are treated as most restrictive until an administrator classifies them (A-3).
+- **Enforcement is in the data layer.** The filter is pushed into the index/store queries
+  (NFR-P5) so a bug in the presentation layer cannot leak content.
+
+### 5.3 Roles → capabilities matrix
+
+| Capability | viewer | analyst | admin (tenant) | operator (OP plane) |
+|---|---|---|---|---|
+| Ask questions over `internal` knowledge | yes | yes | yes | no (no content access [F15]) |
+| Retrieve `confidential` documents/chunks | no [F14] | no [F14] | yes | no |
+| Query exposed `internal` datasets | no (view-only answers) | yes | yes | no |
+| Query `confidential` datasets | no | no | yes (A-3) | no |
+| Manage users/groups/workspaces (own tenant) | no | no | yes [F16] | no |
+| Register data sources (own tenant) | no | no | yes [F16] | no |
+| Change classification | no | no | yes (audited, reversible [F17]) | no |
+| Suspend tenant / rotate connector credential | no | no | no | yes [F15] |
+| See per-tenant usage metadata | no | no | yes (own tenant) | yes [F15] |
+
+The `viewer`/`analyst` split above reflects that `viewer` is a read-only consumer of answers
+while `analyst` may drive data queries; the exact boundary is an assumption (A-19) because
+`FACTS.md` defines the ordering `viewer < analyst < admin` but not each role's data privileges.
+
+### 5.4 Classification operations [EXT]
+
+- Document classification exists [F6]; extending it to datasets and to newly ingested objects
+  is [EXT] of the data model plus [CFG] per object.
+- Changing a classification is an access-affecting administrative change: deliberate, audited,
+  reversible [F17]. Downgrading `confidential` → `internal` should require an explicit
+  confirmation and is a candidate for two-person review under §8 (A-20).
+- Classification changes must trigger a re-filter of derived artifacts: cached retrieval
+  results and cached answers referencing that unit are invalidated (A-21).
+
+---
+
+## 6. Tenant isolation
+
+### 6.1 What exists
+
+Tenant claim on every request, row-level scoping in application code, covered by tests, with a
+Keycloak realm per tenant [F2, F3]. This is the foundation and is not rebuilt.
+
+### 6.2 Isolation must be extended to every new store [NEW]
+
+Every component added by this plan is a new place where a tenant boundary could be broken, so
+each gets an explicit isolation mechanism and an explicit test (§9):
+
+| Component | Isolation mechanism | Tag |
+|---|---|---|
+| Vector index | Mandatory tenant partition/namespace in every key; separate collection per tenant; no cross-tenant query API | [NEW] |
+| Connector registry + credentials | Connector bound to one tenant; credential resolved only for that tenant | [NEW] |
+| Extracted data projections | Tenant column + row scoping in the same application layer as existing scoping [F2] | [EXT] |
+| Semantic-layer catalogue | Catalogue entry scoped to tenant and to exposed objects | [NEW] |
+| Query/answer/embedding caches | Cache key includes tenant id; per-tenant cache eviction | [NEW] |
+| LLM gateway | Request assembly is tenant-pure; no shared prompt/context state; per-tenant provider keys where the contract requires residency [F12] | [NEW] |
+| Usage/metering store | Tenant-scoped; the operator view exposes aggregates only [F15] | [NEW] |
+| Audit | Tenant column exists already [F4]; new event types carry it too | [EXT] |
+
+### 6.3 Isolation as a residency property
+
+[F12] requires customer data to stay in the customer's region. That makes region an isolation
+axis alongside tenant: the deployment topology must be able to place a tenant's content,
+derived artifacts and caches in a region and guarantee they are not replicated elsewhere.
+`FACTS.md` describes a multi-tenant SaaS [F1] without stating regional topology, so regional
+placement is [NEW] and its exact design is an assumption (A-2). Until it exists, the plan must
+not claim residency compliance — it must state it as outstanding.
+
+### 6.4 Operator/tenant separation
+
+The operator plane must be able to operate *on* a tenant without being able to read *within*
+it [F15]: suspend [FR-14], rotate credentials [FR-15], see usage metadata [FR-16]. Enforced by
+separate API surfaces (FR-20) and by the absence of any content-returning code path in the
+operator plane, verified by test (FR-17).
+
+### 6.5 Isolation verification
+
+- Existing tenant-scoping tests [F2] are extended, not replaced, to cover every new surface
+  (§9), including negative tests that a request bearing tenant A's claim cannot observe tenant
+  B's chunks, datasets, cache entries, usage or embeddings.
+- Cross-tenant retrieval is a contractual prohibition [F12], so the tests are contractual
+  acceptance tests, not just regression tests.
+
+---
+
+## 7. Auditing and operational monitoring
+
+### 7.1 Audit extension [EXT of an existing append-only table]
+
+Today audit records actor, tenant, action, object, detail for every write and every privileged
+read, append-only [F4]. This plan adds event types, keeping append-only semantics (NFR-CP2):
+
+- **Query audit**: question identity, acting user, tenant, retrieval filter applied, sources
+  returned, sources withheld for entitlement (metadata only), confidence verdict, answer
+  identity.
+- **Model audit**: model/provider identity and version, token counts, whether `confidential`
+  content was in scope (boolean, no content).
+- **Connector audit**: registration, credential rotation (by whom, when — never the value),
+  extraction batches with provenance [§3.4].
+- **Classification/access audit**: every classification change and every role/workspace change,
+  with before/after values, satisfying "deliberate, audited, reversible" [F17].
+- **Lifecycle audit**: export requested/completed, deletion requested/completed with proof that
+  content and embeddings were removed within the 30-day window [F12, NFR-PR7].
+
+Audit detail must never store raw customer content or credentials [NFR-PR5]; it stores
+identities and decisions, which is sufficient for traceability [F13] and for [F15].
+
+### 7.2 Monitoring extension [EXT of Prometheus/logs/alerts]
+
+Existing: structured logs, request latency and error-rate metrics, alert on failed background
+jobs [F10]. Additions:
+
+- Per-tenant labelled latency and error metrics on the query path [NFR-P6].
+- Ingestion metrics: extraction lag per source, rows/bytes ingested, connector auth failures,
+  quota saturation.
+- Index pipeline metrics: chunk queue depth, embedding backlog, indexing lag vs NFR-P4,
+  dead-letter count.
+- Retrieval quality signals: zero-result rate, "insufficient coverage" rate [FR-3],
+  entitlement-withheld source count [FR-6].
+- Gate metrics: count of classification denials — a sudden change is an operational signal and
+  a security signal.
+- Retention metrics: deletion queue depth and age vs the 30-day deadline [F12]; export job
+  status.
+- Alerts: failed ingestion job (extends the existing failed-job alert [F10]), deletion-SLA
+  breach, vector index unavailable (drives NFR-A2 degradation), cross-tenant access attempt
+  (denied by design, but must alert), provider credential expiry.
+
+### 7.3 Operator-visible views [NEW]
+
+The per-tenant usage view required by [F15] is built on the metering store (§2.2) and the
+aggregated audit data, exposing counts, volumes and health — never content. This is the
+practical meaning of "see usage without reading content".
+
+---
+
+## 8. Approval and confirmation boundaries
+
+`FACTS.md` is explicit that there is no agentic automation and no approval workflow framework
+to reuse [F18]. The plan therefore (a) keeps the product's default posture read-only, and
+(b) treats any write/approval capability as new work that is **out of scope** for this
+solution rather than quietly assumed.
+
+### 8.1 Unattended (no human in the loop) — permitted
+
+All are read-only with respect to customer source systems, tenant-scoped, and audited:
+
+- Connector extraction, profiling and incremental refresh [§3].
+- Document extraction, chunking, embedding, indexing [§4.1, §4.2].
+- Retrieval, context assembly and answer generation for a user's own question [§4.3].
+- Governed read-only query execution against exposed datasets [§4.4].
+- Scheduled export and deletion jobs *after* the corresponding request has been approved
+  (§8.2) — the execution is unattended, the decision is not.
+- Operational automation that is purely internal: cache eviction, index compaction, retry,
+  quota enforcement.
+
+### 8.2 Requires a human decision (deliberate action) — enforced
+
+- Enabling or reconfiguring a data source or connector, and supplying/rotating its credential
+  [F15, F16, FR-9, FR-15].
+- Any change to users, groups, workspace membership, roles or entitlements [F16, F17].
+- Any change to a classification, especially downgrade from `confidential` [F17, A-20].
+- Tenant suspension/reinstatement [F15, FR-14].
+- Raising a data export or a deletion request [F12, FR-13 in §1.2].
+- Adding a new LLM provider/model to the catalogue, and promoting a model version [FR-19, A-11].
+- Any expansion of what the model is allowed to reach (e.g. enabling text-to-SQL, A-17).
+
+### 8.3 Explicitly not built here
+
+- Any unattended **write** into ERP/DW/SQL Server/object storage, and any agent that takes an
+  action on a source system. This would require an approval workflow that does not exist
+  [F18]; building it is a separate initiative with its own boundary design. The plan states
+  this so that the omission is a decision, not an oversight.
+- Autonomous multi-step agents over data: not present [F18], not required by the scenario,
+  and not introduced.
+
+### 8.4 Boundary mechanics
+
+- "Deliberate" means an explicit, confirmed, saved administrative action with before/after
+  captured in audit [F17], plus a confirmation step for destructive or widening actions
+  (classification downgrade, deletion, credential rotation, entitlement increase) (A-22).
+- "Reversible" means every access-affecting change has a defined inverse that restores the
+  prior state (e.g. re-granting a role, restoring a classification, reinstating a tenant),
+  and the inverse is itself audited [F17].
+- The three planes have different confirmation thresholds: OP actions are platform-scoped and
+  reversible (FR-14, FR-15); CA actions are tenant-scoped, audited, reversible (FR-11); EU
+  actions have no administrative effect at all (FR-21).
+
+---
+
+## 9. Testing and acceptance
+
+CI exists: build, unit and integration tests, container build, signed release, review and green
+checks required on every merge [F11]. This plan extends that pipeline; it never weakens,
+skips or retargets an existing test (per the brief).
+
+### 9.1 Test layers added
+
+| Layer | What it proves | Fact anchor |
+|---|---|---|
+| Connector integration tests (containerised sources) | Connectors extract correctly, incrementally, and read-only | [F9], [F18] |
+| Tenant-isolation tests per new store | No cross-tenant visibility of chunks, datasets, caches, usage, embeddings | [F2], [F12] |
+| Classification enforcement tests | `confidential` invisible to `viewer`/`analyst` even with workspace membership | [F14] |
+| Permission-aware retrieval tests (golden set) | For a fixed corpus and fixed principals, the expected visible/forbidden source set is returned exactly | [F5], [F13], [F14] |
+| Traceability tests | Every actionable answer cites resolvable sources; citations correspond to retrieved chunks | [F13] |
+| Uncertainty tests | Uncovered/ambiguous questions produce disclosure, not a fabricated answer | [F13] |
+| Data-governance tests | The model cannot reach an unexposed object; no write path exists | [F18], [FR-21] |
+| Deletion/export tests | Deletion removes content **and** embeddings within 30 days, provable from audit; export contains only that tenant | [F12] |
+| Residency tests | Content and artifacts for a tenant are placed/held in the tenant's region | [F12], A-2 |
+| Ops/rollback tests | Suspend stops querying and ingestion; rollback restores prior release and prior permissions | [F15], [F17] |
+| Prompt-injection/red-team tests | Content containing instructions cannot escalate entitlements or exfiltrate other sources | A-23 |
+| Load/performance tests | SLOs §2.1 and per-tenant fairness NFR-P6 | A-8 |
+
+### 9.2 Acceptance criteria (contractual, must all pass)
+
+1. Traceability: 100 % of actionable answers in the acceptance set cite their sources [F13].
+2. Confidentiality: zero `confidential` units returned to `viewer`/`analyst` across the
+   negative test set [F14].
+3. Isolation: zero cross-tenant observations across the new surfaces [F2, F12].
+4. Residency: tenant content and derived artifacts confined to the tenant's region [F12].
+5. Operator separation: operator tokens cannot retrieve content [F15].
+6. Reversibility: every audited access change can be undone and the undo is audited [F17].
+7. Deletion: content and embeddings removed within 30 days, evidenced [F12].
+8. No unattended write against any source system [FR-21, F18].
+
+### 9.3 Acceptance per work package
+
+Each work package in §11 declares its own exit criteria; a package is not complete until its
+criteria pass in CI [F11] and it has not regressed any existing tenant, audit or auth test.
+
+---
+
+## 10. Deployment and rollback
+
+### 10.1 Deployment model [EXT of existing CI/CD]
+
+- Reuse the GitHub Actions pipeline: build, unit and integration tests, container build, signed
+  release, review and green checks [F11]. New components (vector index, gateway, connector
+  workers) are added as services built and signed by the same pipeline.
+- Deployed as the non-root `openjm` user, consistent with today [F1].
+- Feature flags scoped by **plane and tenant** [A-24], so the operator plane, customer admin
+  plane and end-user experience can be enabled independently, and so a canary tenant can
+  exercise the new path before general availability.
+- New store provisioning (vector index, secret store, metering store) is an operator action
+  with audit [FR-19, F4].
+
+### 10.2 Rollout sequence
+
+1. Infrastructure: secret store, metering store, vector index, gateway — provisioned, empty,
+   health-checked, with the old retrieval path still serving [F8].
+2. Dual-path retrieval: new hybrid path enabled for an internal canary tenant while the
+   existing full-text path remains the default and the fallback (NFR-A2).
+3. Connectors enabled per tenant, one source type at a time, starting PostgreSQL [§3.3].
+4. Embedding backfill per tenant, background, resumable, metered [NFR-C3].
+5. Plane-by-plane enablement of the UI surfaces, customer admin first, then end-user, per
+   canary tenant.
+6. General availability, with the full-text fallback retained, not removed (NFR-A2).
+
+### 10.3 Rollback
+
+- **Application**: redeploy the previous signed release (available because every release is
+  signed [F11]); feature flags allow disabling a path without a redeploy.
+- **Retrieval**: switch a tenant back to the existing full-text path [F8]; the new path is
+  additive, so disabling it is a configuration change, not a data change.
+- **Schema**: migrations must be additive/backward-compatible (add column/table, never
+  destructive in the same release) so the previous release runs against the migrated schema
+  [A-25]; destructive cleanup is a separate, later release.
+- **Connectors**: disable a connector per tenant; unregistering a source does not delete
+  already-ingested content, which is a separate deletion flow with its own 30-day obligation
+  [F12].
+- **Permissions**: rollback of an access change is an audited, explicit inverse action
+  [F17, FR-11]; the audit trail is never rewritten to hide the change.
+- **Index**: the vector index is rebuildable from source content and chunks [§4.1]; a corrupt
+  index is repaired by rebuild, not by restoring a backup that might reintroduce deleted
+  content (a rebuild is also the safe path after a deletion, NFR-PR7).
+- **Kill switch**: a platform-level switch to stop all outbound LLM traffic, for provider or
+  privacy incidents, operable from the OP plane [FR-19].
+
+---
+
+## 11. Dependencies, sequencing and bounded work packages
+
+### 11.1 Cross-cutting constraints (not packages)
+
+These apply to every package and are the reason for the ordering: tenant isolation (§6),
+residency (NFR-PR1, A-2), classification gating (§5), audit append-only (§7), and the
+new/extends/config tag discipline.
+
+### 11.2 Work packages
+
+Each package is deliberately bounded (single owner-sized, with exit criteria). Tags: NEW / EXT /
+CFG.
+
+| ID | Package | Tag | Depends on | Exit criteria |
+|---|---|---|---|---|
+| WP-1 | Secret store + credential model (per-tenant connector/provider credentials, rotation API) | NEW | — | Credentials stored/rotated without exposing values; operator rotation path exists [F15] |
+| WP-2 | Connector framework (registry, contract, scheduling, provenance, quotas) | NEW | WP-1 | One connector implemented end-to-end through the framework; failure isolated per tenant |
+| WP-3 | Object-storage connector | NEW | WP-2 | Tenant-prefix-bound, idempotent, routes PDF/DOCX into existing pipeline [F6] |
+| WP-4 | PostgreSQL connector | NEW | WP-2 | Incremental extraction, read-only principal, provenance per batch |
+| WP-5 | SQL Server connector | NEW | WP-4 | Same contract, type mapping verified, read-only |
+| WP-6 | Data-warehouse connector | NEW | WP-4 | Contract satisfied; per-tenant query-cost quota enforced [NFR-C2] |
+| WP-7 | ERP integration (discovery-first, curated views) | NEW | WP-4, WP-6 | Curated ERP views exposed; explicit discovery exit gate passed |
+| WP-8 | Dataset classification model + default-deny | NEW | — | Datasets classified; unclassified = most restrictive; CA can classify [FR-12] |
+| WP-9 | Chunking pipeline with inherited classification | NEW | — | Chunks never less restricted than parent; provenance retained |
+| WP-10 | Embedding pipeline + tenant-partitioned vector index | NEW | WP-9 | Partition enforced in keys; content-hash dedupe; deletion propagation |
+| WP-11 | Permission-aware hybrid retrieval (extend existing service) | EXT | WP-9, WP-10 | Filter pushed into store queries; full-text fallback preserved [F8] |
+| WP-12 | Governed semantic layer + parameterised query runner | NEW | WP-2, WP-8 | Model selects only from approved catalogue; no write path; traceable execution |
+| WP-13 | LLM gateway / model access broker (provider catalogue, metering, redaction, kill switch) | NEW | WP-1 | Per-tenant metering; content-free logs; kill switch operable [F18] |
+| WP-14 | Answer assembly: citations, confidence/coverage disclosure, entitlement-skipped reporting | NEW | WP-11, WP-13 | Acceptance set 100 % traceable; uncertainty disclosed [F13] |
+| WP-15 | Operator plane additions (suspend, usage view, entitlements) | EXT | WP-13 | Suspend fast and reversible; usage metadata only; no content path [F15] |
+| WP-16 | Customer admin plane additions (data sources, dataset permissions, classification) | EXT | WP-2, WP-8 | Own-tenant only; every change audited and reversible [F16, F17] |
+| WP-17 | Audit extension (query/model/connector/classification/lifecycle events) | EXT | WP-13 | New events append-only; no content stored [F4] |
+| WP-18 | Export + deletion service incl. embeddings | NEW | WP-10, WP-17 | Deletion provable within 30 days; export tenant-scoped [F12] |
+| WP-19 | Monitoring extension (per-tenant metrics, pipeline/retention alerts) | EXT | WP-13, WP-17 | Metrics/alerts live on existing stack [F10] |
+| WP-20 | Test harness extensions (isolation, classification, traceability, deletion, residency, ops) | EXT | all above | §9.2 acceptance set green in CI [F11] |
+| WP-21 | Deployment/rollback enablement (flags, dual-path, additive migrations, runbooks) | EXT | WP-11 | Rollback drilled per §10.3 |
+
+### 11.3 Sequencing and critical path
+
+- **Critical path:** WP-1 → WP-2 → WP-9 → WP-10 → WP-11 → WP-14 → WP-20. Retrieval and
+  grounding are the product's core; everything else supports them.
+- **Parallelisable once WP-2 lands:** WP-3, WP-4, and (after WP-4) WP-5, WP-6, WP-7 are
+  independent per-source work with a shared contract.
+- **Parallelisable from the start:** WP-8 (classification model) and WP-9 (chunking) do not
+  depend on the connector framework.
+- **Governance packages (WP-13, WP-15, WP-16, WP-17, WP-19)** are what make the product
+  *governed*: they are not optional polish. Shipping retrieval without WP-13/WP-17 leaves
+  [F13], [F15] and [F4] unmet.
+- **WP-18 (deletion/export)** must ship no later than the first tenant that ingests
+  customer content beyond documents, because the 30-day obligation [F12] applies from the
+  moment embeddings exist (WP-10).
+- **WP-20/WP-21** run alongside, not after; each package's exit criteria feed them.
+
+### 11.4 Explicit non-goals (do not build, do not claim)
+
+- No vector DB, embedding or reranking capability is claimed as existing [F18] — all three are
+  [NEW] in WP-9/WP-10 and are prerequisites, not assumptions.
+- No ERP/DW/SQL Server/object-storage connector is claimed as existing [F18] — WP-3..WP-7.
+- No new policy engine is introduced [F18]; the contract's rules are expressed with Keycloak
+  roles [F3], workspace membership [F5] and classification [F6].
+- No document-level ACLs beyond `internal`/`confidential` are introduced [F18].
+- No managed LLM gateway is assumed; WP-13 builds one [F18].
+- No agentic automation or source-writing behaviour is introduced [F18]; §8 defines the
+  boundary.
+- Regional residency (A-2) and dataset-level classification (A-3) are new and are labelled as
+  new work rather than presented as compliance already achieved.
+
+### 11.5 Summary of what is configuration-only
+
+For completeness, the small set of genuinely [CFG] items: adding more PDF/DOCX documents to
+the existing ingestion path [F6]; creating workspaces and assigning membership [F5];
+provisioning per-tenant realms and group-to-role mappings [F3]; using the existing REST
+connector for JSON APIs [F9]; tuning retention defaults in the OP plane (FR-19). Everything
+else in this plan is [EXT] or [NEW].

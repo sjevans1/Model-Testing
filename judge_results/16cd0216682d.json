@@ -1,0 +1,12 @@
+{
+  "functional": 92,
+  "security": 91,
+  "instruction": 55,
+  "maintainability": 60,
+  "testing": 36,
+  "efficiency": 86,
+  "critical_failures": [],
+  "rationale": "Dense, well-anchored plan through section 5: honest gap register, CFG/EXT/NEW tagging, three planes kept distinct, credible hybrid retrieval with query-side authorisation filtering, deny-by-default classification beats workspace, tenant-partitioned index, read-only connectors. No invented capabilities; assumptions marked inline. But the artifact ends mid-5.3: tenant isolation detail, audit/monitoring, confirmation boundaries, the test plan, deploy/rollback and work packages exist only as cross-references, so structure, testing and package decomposition are unverifiable.",
+  "_task": "T1",
+  "_label": "deepseek-v4.1-flash"
+}

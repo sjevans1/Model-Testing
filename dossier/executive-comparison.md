@@ -11,7 +11,7 @@ Scores are out of 100 on the documented weights (functional 35, security 25, ins
 | T5 | Security + isolation | 96.8 | 96.8 | 96.8 |
 | T6 | CI diagnosis + repair | 76.3 | 94.7 | 94.7 |
 | T7 | Independent code review | 93.8 | 91.7 | 96.4 |
-| T8 | Test design + acceptance | 71.1 | 75.8 | 78.9 |
+| T8 | Test design + acceptance | 100.0 | 76.3 | 77.4 |
 
 `*` = critical failure recorded for that trial.
 
@@ -19,6 +19,6 @@ Scores are out of 100 on the documented weights (functional 35, security 25, ins
 
 | Candidate | Overall (mean of graded tasks) | Tasks graded | First-attempt success | Final success | Critical failures | Total time | Metered-equivalent cost |
 |---|---|---|---|---|---|---|---|
-| Claude Haiku 5.5 | 89.4 | 8 | 7 | 8 | 0 | 1473.8s | $0.8667 |
+| Claude Haiku 5.5 | 93.0 | 8 | 7 | 8 | 0 | 1473.8s | $0.8667 |
 | GPT-6 Luna | 88.1 | 8 | 7 | 8 | 0 | 1603.7s | $0.2225 |
-| DeepSeek V4.1 Flash | 90.8 | 8 | 6 | 8 | 0 | 3204.8s | $0.4928 |
+| DeepSeek V4.1 Flash | 90.6 | 8 | 6 | 8 | 0 | 3204.8s | $0.4928 |

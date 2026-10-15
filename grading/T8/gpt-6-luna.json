@@ -38,12 +38,12 @@
       "deliverables: ['BRIEF.md', 'test-plan.md', 'README.md', 'CLAIMS.md']"
     ],
     "testing": [
-      0.45,
-      "1 test file(s) added, suite not green"
+      0.5,
+      "1 test file(s); detects defects=True, passes on a correct implementation=False (a suite that fails in this defective tree is expected)"
     ],
     "maintainability": [
       1.0,
-      "2 files changed"
+      "2 source files changed"
     ]
   },
   "notes": [],
@@ -52,6 +52,6 @@
     "fails_on_shipped": true,
     "passes_on_fixed": false,
     "tests_ran": 16,
-    "notes": "ne(\n        ^^^^^^^^^^^^^^^^^^^^\n            \"SELECT revoked_at FROM reports WHERE id = ?\", (report_id,)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        )[\"revoked_at\"]\n        ^^^^^^^^^^^^^^^\n    )\n    ^\nAssertionError: 1792036168.4957945 is not None\n\n----------------------------------------------------------------------\nRan 16 tests in 0.134s\n\nFAILED (failures=3)\n"
+    "notes": "one(\n        ^^^^^^^^^^^^^^^^^^^^\n            \"SELECT revoked_at FROM reports WHERE id = ?\", (report_id,)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        )[\"revoked_at\"]\n        ^^^^^^^^^^^^^^^\n    )\n    ^\nAssertionError: 1792037752.043631 is not None\n\n----------------------------------------------------------------------\nRan 16 tests in 0.131s\n\nFAILED (failures=3)\n"
   }
 }

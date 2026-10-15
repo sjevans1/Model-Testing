@@ -76,9 +76,9 @@ Levels follow the assignment: **Autonomous candidate** (>= 85, no critical failu
 
 | Candidate | Score | Level | Evidence | Must not do unsupervised |
 |---|---|---|---|---|
-| Claude Haiku 5.5 | 87.5 | Autonomous candidate | 1 task(s) scored | merges, releases, production changes (retained by policy) |
-| GPT-6 Luna | 47.5 | Not yet qualified | role score below 70 | the role itself |
-| DeepSeek V4.1 Flash | 62.5 | Not yet qualified | role score below 70 | the role itself |
+| Claude Haiku 5.5 | 100.0 | Autonomous candidate | 1 task(s) scored | merges, releases, production changes (retained by policy) |
+| GPT-6 Luna | 50.0 | Not yet qualified | role score below 70 | the role itself |
+| DeepSeek V4.1 Flash | 55.0 | Not yet qualified | role score below 70 | the role itself |
 
 **Preferred:** Claude Haiku 5.5. **Secondary:** DeepSeek V4.1 Flash.
 

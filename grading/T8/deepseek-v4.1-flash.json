@@ -38,12 +38,12 @@
       "deliverables: ['BRIEF.md', 'test-plan.md', 'README.md', 'CLAIMS.md']"
     ],
     "testing": [
-      0.75,
-      "8 test file(s) added, suite not green"
+      0.6,
+      "8 test file(s); detects defects=True, passes on a correct implementation=False (a suite that fails in this defective tree is expected)"
     ],
     "maintainability": [
       1.0,
-      "9 files changed"
+      "9 source files changed"
     ]
   },
   "notes": [],
@@ -52,6 +52,6 @@
     "fails_on_shipped": true,
     "passes_on_fixed": false,
     "tests_ran": 70,
-    "notes": " recent call last):\n  File \"/home/sjeva/.hermes/cache/scratch/t8-998r0860/fixed/tests/test_claim2_snapshot_integrity.py\", line 136, in test_revoke_requires_an_admin_role\n    with self.assertRaises(Forbidden):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^\nAssertionError: Forbidden not raised\n\n----------------------------------------------------------------------\nRan 70 tests in 0.517s\n\nFAILED (failures=2)\n"
+    "notes": " recent call last):\n  File \"/home/sjeva/.hermes/cache/scratch/t8-oszbfjx0/fixed/tests/test_claim2_snapshot_integrity.py\", line 136, in test_revoke_requires_an_admin_role\n    with self.assertRaises(Forbidden):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^\nAssertionError: Forbidden not raised\n\n----------------------------------------------------------------------\nRan 70 tests in 0.633s\n\nFAILED (failures=2)\n"
   }
 }

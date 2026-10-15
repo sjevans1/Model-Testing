@@ -271,3 +271,24 @@ passes on a correct implementation (a fully claim-validating suite, 52 tests); L
 still fail that half on their own assertions about points the task never fixed (a specific
 `save_batch` status string, whether a revoked report stays in the listing, and whether an owning
 analyst may revoke). Evidence: `task-evidence/t8-reference-defects.txt`.
+
+## 17. Three false penalties on T8, from matching paths loosely (corrected)
+
+T8 / Haiku 5.5 was first scored instruction 0.0 and maintainability 0.0. Both were wrong:
+
+- The "do not edit tests/test_smoke.py" rule was applied with a suffix match, so the copy of that
+  file inside the candidate's mutation corpus (`mutation/M5/tests/test_smoke.py`) was counted as an
+  edit. A byte diff against the fixture shows its tests/test_smoke.py is untouched.
+- The "too many files changed" rule counted the mutation corpus itself. The brief explicitly asks
+  for mutation or seeded-defect checks, so building a corpus of mutants is the requested behaviour,
+  not bloat.
+
+Both rules now ignore generated corpora (`mutation/`, `corpus/`, `generated/`, `mutants/`) and the
+untouchable-file rule matches exact relative paths. A third correction went with them: for T8 the
+candidate's tree IS the defective implementation, so "the candidate's own suite is not green there"
+is the expected and correct outcome; testing for T8 is now taken from the two-sided result instead
+(detects defects, and passes when a correct implementation is dropped in).
+
+Effect, recomputed before any final score was published: Haiku 5.5 T8 goes from 71.1 to 100,
+Luna stays near 77 and DeepSeek near 79, which is the honest ordering, since Haiku's suite is the
+only one that is both defect-sensitive and claim-valid.

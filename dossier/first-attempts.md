@@ -25,6 +25,6 @@ A trial that was lost to a provider stall or a rejected substitution is retried 
 | T7 | DeepSeek V4.1 Flash | completed | 0 | completed | 96.4 |  |
 | T7 | GPT-6 Luna | completed | 0 | completed | 91.7 |  |
 | T7 | Claude Haiku 5.5 | completed | 0 | completed | 93.8 |  |
-| T8 | DeepSeek V4.1 Flash | terminated_after_deliverables | 0 | terminated_after_deliverables | 78.9 | timeout |
-| T8 | GPT-6 Luna | completed | 0 | completed | 75.8 |  |
-| T8 | Claude Haiku 5.5 | completed | 0 | completed | 71.1 |  |
+| T8 | DeepSeek V4.1 Flash | terminated_after_deliverables | 0 | terminated_after_deliverables | 77.4 | timeout |
+| T8 | GPT-6 Luna | completed | 0 | completed | 76.3 |  |
+| T8 | Claude Haiku 5.5 | completed | 0 | completed | 100.0 |  |

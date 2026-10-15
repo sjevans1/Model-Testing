@@ -34,16 +34,16 @@
       "5/5 claim areas covered"
     ],
     "instruction": [
-      0.0,
-      "tests/test_smoke.py was modified"
+      1.0,
+      "deliverables: ['BRIEF.md', 'test-plan.md', 'README.md', 'CLAIMS.md']"
     ],
     "testing": [
-      0.75,
-      "5 test file(s) added, suite not green"
+      1.0,
+      "5 test file(s); detects defects=True, passes on a correct implementation=True (a suite that fails in this defective tree is expected)"
     ],
     "maintainability": [
-      0.0,
-      "262 files changed"
+      1.0,
+      "6 source files changed (+256 generated corpus files, not counted)"
     ]
   },
   "notes": [],

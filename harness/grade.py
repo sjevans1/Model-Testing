@@ -53,6 +53,17 @@ UNTOUCHABLE = {"T3": ["tests/test_smoke.py"], "T5": ["tests/test_smoke.py"],
 SIGNATURES = ["def save_report", "def get_report", "def list_reports", "def revoke_report"]
 
 
+GENERATED_DIRS = ("mutation/", "corpus/", "generated/", "mutants/", ".bench-")
+
+
+def is_generated(rel: str) -> bool:
+    return any(rel.startswith(d) or f"/{d}" in rel for d in GENERATED_DIRS)
+
+
+def source_changes(changed: list[str]) -> list[str]:
+    return [c for c in changed if not is_generated(c)]
+
+
 def read_json(path: pathlib.Path) -> dict:
     try:
         return json.loads(path.read_text())
@@ -115,6 +126,9 @@ def own_tests(work: pathlib.Path) -> tuple[int, bool]:
     return len(files), green
 
 
+t8_two_sided_cache: dict[str, dict] = {}
+
+
 def heuristic_categories(task: str, work: pathlib.Path, checks: list[dict]) -> dict:
     """Instruction / testing / maintainability from the artifact itself."""
     out: dict[str, tuple[float, str]] = {}
@@ -127,7 +141,8 @@ def heuristic_categories(task: str, work: pathlib.Path, checks: list[dict]) -> d
     # instruction adherence -----------------------------------------------------------
     penalty = []
     for forbidden in UNTOUCHABLE[task]:
-        if any(c.endswith(forbidden) or c == forbidden for c in changed):
+        # exact relative path only: a copy of the same file inside a mutation corpus is not an edit
+        if any(c == forbidden for c in source_changes(changed)):
             penalty.append(f"{forbidden} was modified")
     if task in ("T3", "T5"):
         service = (work / "src" / "reportcore" / "service.py")
@@ -150,7 +165,17 @@ def heuristic_categories(task: str, work: pathlib.Path, checks: list[dict]) -> d
 
     # testing -------------------------------------------------------------------------
     n_tests, green = own_tests(work)
-    if task in ("T3", "T5", "T4", "T8"):
+    if task == "T8":
+        two = t8_two_sided_cache.get(str(work)) or {}
+        detects, passes = bool(two.get("fails_on_shipped")), bool(two.get("passes_on_fixed"))
+        score = (0.5 * detects + 0.5 * passes)
+        if n_tests >= 2:
+            score = min(1.0, score + 0.1)
+        out["testing"] = (round(score, 3),
+                          f"{n_tests} test file(s); detects defects={detects}, passes on a correct "
+                          f"implementation={passes} (a suite that fails in this defective tree is "
+                          f"expected)")
+    elif task in ("T3", "T5", "T4"):
         score = 0.0
         if n_tests:
             score = 0.7 if green else 0.45
@@ -162,8 +187,10 @@ def heuristic_categories(task: str, work: pathlib.Path, checks: list[dict]) -> d
 
     # maintainability -----------------------------------------------------------------
     m_pen = []
-    if len(changed) > 12:
-        m_pen.append(f"{len(changed)} files changed")
+    src_changes = source_changes(changed)
+    if len(src_changes) > 12:
+        m_pen.append(f"{len(src_changes)} source files changed")
+    generated = len(changed) - len(src_changes)
     for c in changed:
         if c.endswith(".pyc") or "__pycache__" in c:
             m_pen.append("compiled artifacts left behind")
@@ -179,7 +206,10 @@ def heuristic_categories(task: str, work: pathlib.Path, checks: list[dict]) -> d
                     third_party.append(f"{rel}:{mod}")
     if third_party:
         m_pen.append(f"non-stdlib imports: {sorted(set(third_party))[:3]}")
-    out["maintainability"] = (0.0 if m_pen else 1.0, "; ".join(m_pen) or f"{len(changed)} files changed")
+    m_note = "; ".join(m_pen) or f"{len(src_changes)} source files changed"
+    if generated:
+        m_note += f" (+{generated} generated corpus files, not counted)"
+    out["maintainability"] = (0.0 if m_pen else 1.0, m_note)
     return out
 
 
@@ -260,6 +290,7 @@ def grade_trial(rec: dict) -> dict:
         entry["checks"] = run_hidden("grade_t6.py", work, timeout=600)
     elif task == "T8":
         two = t8_two_sided(work)
+        t8_two_sided_cache[str(work)] = two
         entry["two_sided"] = two
         entry["checks"] = [
             {"id": "M1", "group": "functional", "passed": two["fails_on_shipped"],

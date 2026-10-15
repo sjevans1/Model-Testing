@@ -812,13 +812,13 @@
     "cache_read_tokens": null,
     "cache_write_tokens": null,
     "api_calls": null,
-    "overall": 78.9,
-    "raw_overall": 78.9,
+    "overall": 77.4,
+    "raw_overall": 77.4,
     "categories": {
       "functional": 50.0,
       "security": 100.0,
       "instruction": 100.0,
-      "testing": 75.0,
+      "testing": 60.0,
       "maintainability": 100.0
     },
     "redistributed": [
@@ -853,13 +853,13 @@
     "cache_read_tokens": 1166416,
     "cache_write_tokens": 64385,
     "api_calls": 30,
-    "overall": 75.8,
-    "raw_overall": 75.8,
+    "overall": 76.3,
+    "raw_overall": 76.3,
     "categories": {
       "functional": 50.0,
       "security": 100.0,
       "instruction": 100.0,
-      "testing": 45.0,
+      "testing": 50.0,
       "maintainability": 100.0
     },
     "redistributed": [
@@ -894,14 +894,14 @@
     "cache_read_tokens": 2044050,
     "cache_write_tokens": 83348,
     "api_calls": 39,
-    "overall": 71.1,
-    "raw_overall": 71.1,
+    "overall": 100.0,
+    "raw_overall": 100.0,
     "categories": {
       "functional": 100.0,
       "security": 100.0,
-      "instruction": 0.0,
-      "testing": 75.0,
-      "maintainability": 0.0
+      "instruction": 100.0,
+      "testing": 100.0,
+      "maintainability": 100.0
     },
     "redistributed": [
       "efficiency"

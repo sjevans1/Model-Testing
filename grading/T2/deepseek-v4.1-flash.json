@@ -1,0 +1,109 @@
+{
+  "task": "T2",
+  "model": "deepseek-v4.1-flash",
+  "label": "deepseek-v4.1-flash",
+  "workdir": "/home/sjeva/bench/model-testing/runs/a/T2/deepseek-v4.1-flash",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "D01",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'scope' present"
+    },
+    {
+      "id": "D02",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'state transition' present"
+    },
+    {
+      "id": "D03",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'save' present"
+    },
+    {
+      "id": "D04",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'cancel' present"
+    },
+    {
+      "id": "D05",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'stale' present"
+    },
+    {
+      "id": "D06",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'authoriz' present"
+    },
+    {
+      "id": "D07",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'audit' present"
+    },
+    {
+      "id": "D08",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'regression test' present"
+    },
+    {
+      "id": "D09",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'migration' present"
+    },
+    {
+      "id": "D10",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'acceptance' present"
+    },
+    {
+      "id": "D11",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'unchanged' present"
+    },
+    {
+      "id": "D12",
+      "group": "instruction",
+      "passed": true,
+      "detail": "section/reference 'line' present"
+    },
+    {
+      "id": "D90",
+      "group": "functional",
+      "passed": true,
+      "detail": "8 cited files exist in the tree (['/home/sjeva/bench/model-testing/runs/a/T2/deepseek-v4.1-flash/src/adminaccess/app.py', 'src/adminaccess/__init__.py', 'src/adminaccess/app.py', 'src/adminaccess/store.py'])"
+    },
+    {
+      "id": "D91",
+      "group": "functional",
+      "passed": true,
+      "detail": "deliverable length 61034 chars"
+    }
+  ],
+  "categories": {
+    "instruction": [
+      1.0,
+      "deliverables: ['BRIEF.md', 'evidence.md', 'README.md', 'work-package.md']"
+    ],
+    "testing": [
+      0.5,
+      "0 test file(s) added (not required by this task)"
+    ],
+    "maintainability": [
+      1.0,
+      "2 files changed"
+    ]
+  },
+  "notes": [],
+  "needs_judge": true
+}

@@ -1,0 +1,13 @@
+{
+ "BRIEF.md": "d67eec515538780f",
+ "README.md": "7676fdce41e2961c",
+ "run_app.sh": "6b05f6c9ae73b3c1",
+ "run_checks.sh": "42d19af53bd8ea32",
+ "src/adminaccess/__init__.py": "e3b0c44298fc1c14",
+ "src/adminaccess/app.py": "826c624f8513f8fb",
+ "src/adminaccess/store.py": "0d482d5ec2810330",
+ "src/adminaccess/users.py": "12ce01bc54e153d9",
+ "tests/test_smoke.py": "4881c89fc369f182",
+ "web/users.html": "bb01124ef86a4410",
+ "web/users.js": "e1e0ff8bcd2ae714"
+}

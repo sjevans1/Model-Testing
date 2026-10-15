@@ -1,0 +1,17 @@
+{
+  "9cf3b2e225f8": {
+    "file": "T2__haiku-5.5.txt",
+    "label": "haiku-5.5",
+    "task": "T2"
+  },
+  "b05cecdf7864": {
+    "file": "T2__gpt-6-luna.txt",
+    "label": "gpt-6-luna",
+    "task": "T2"
+  },
+  "e861040914ad": {
+    "file": "T2__deepseek-v4.1-flash.txt",
+    "label": "deepseek-v4.1-flash",
+    "task": "T2"
+  }
+}

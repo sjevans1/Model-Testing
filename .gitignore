@@ -1,0 +1,12 @@
+# never publish: benchmark keys, the isolated Hermes home (a full vendored install + state.db),
+# and environment snapshots that can contain exported credentials
+hermes-home/
+.env
+preflight/**/o?.txt
+preflight/**/std*.txt
+preflight/**/*.err
+hermes-snap-*.sh
+__pycache__/
+*.pyc
+runs/**/writes.log
+judge_queue/anon/

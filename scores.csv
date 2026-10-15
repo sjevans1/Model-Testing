@@ -1,0 +1,4 @@
+task,task_area,candidate,label,status,attempt,overall_score,raw_score_before_overrides,critical_failures,checks_passed,checks_total,functional,security,instruction,testing,maintainability,efficiency,elapsed_s,metered_equiv_usd,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,api_calls,files_touched
+T2,framing,DeepSeek V4.1 Flash,deepseek-v4.1-flash,completed,1,85.7,85.7,,14,14,,,100.0,50.0,100.0,,501.9,0.146113,126799,78664,2279424,0,40,6
+T2,framing,GPT-6 Luna,gpt-6-luna,completed,1,,82.2,"evaluator: contradicting the brief's hard constraints: 400 for ValidationError and NotFound must remain unchanged, but the package maps not-found to 404 and encodes it in test_post_role_not_found_returns_404",13,14,78.0,94.0,70.0,90.0,75.0,88.0,95.4,0.00757,27,7036,123740,22496,9,6
+T2,framing,Claude Haiku 5.5,haiku-5.5,completed,1,91.4,91.4,,14,14,92.0,88.0,95.0,91.0,96.0,85.0,139.2,0.093193,20,23393,204377,39171,9,6

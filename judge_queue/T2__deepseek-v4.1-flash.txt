@@ -1,0 +1,657 @@
+
+
+### evidence.md
+# Evidence — what was inspected, what was executed, what was observed
+
+Companion to `work-package.md`. Every claim in the package is tied below either to a file+line that
+was read in this directory, or to a command that was actually executed and whose output is quoted.
+Nothing here is inferred from a summary, and no output is reconstructed from memory.
+
+Working directory for every command (unless stated): `/home/sjeva/bench/model-testing/runs/a/T2/deepseek-v4.1-flash`
+Probe scripts were written to the scratch directory
+`/home/sjeva/bench/model-testing/hermes-home/cache/scratch/` so that the sandbox itself was not
+modified — nothing in the sandbox was written except the two deliverables.
+
+## 1. Files inspected (complete list, with the line ranges actually read)
+
+| File | Lines read | Lines cited in the package |
+|---|---|---|
+| `README.md` | 1-21 (whole file) | `README.md:18` (write-through + "the screen calls it on every dropdown change"), `:19-21` (version / optimistic concurrency / audit action) |
+| `BRIEF.md` | 1-58 (whole file) | — |
+| `run_app.sh` | 1-4 (whole file) | `:4` `PYTHONPATH=src python3 -m adminaccess.app` |
+| `run_checks.sh` | 1-4 (whole file) | `:4` `python3 -m unittest discover -s tests -v` |
+| `.bench-fixture-baseline.json` | 1-13 (whole file) | used for the integrity check in §2.1 |
+| `src/adminaccess/__init__.py` | whole file (0 bytes) | — |
+| `src/adminaccess/app.py` | 1-72 (whole file) | `:11` `WEB`, `:12-16` module globals, `:15` `ACTOR`, `:20-26` `_send`, `:28-46` `do_GET`, `:29-42` static routes, `:43-44` `/api/users`, `:45-46` 404, `:48-61` `do_POST`, `:49-50` route + id parse, `:51-52` body read, `:54-55` `change_role(...)`, `:56-58` blanket except -> 400, `:59` 200 `{"user": row}`, `:63-64` silent log, `:67-68` port 8099 |
+| `src/adminaccess/store.py` | 1-60 (whole file) | `:8-26` schema, `:9-16` `users` (`:14` `version INTEGER NOT NULL DEFAULT 1`), `:17-25` `audit`, `:30-34` connect/executescript/commit, `:31` `sqlite3.connect(path)`, `:36-38` `conn`, `:40-44` fetchone/fetchall, `:46-52` `add_user` (`:52` commit), `:54-60` `audit` (`:60` commit) |
+| `src/adminaccess/users.py` | 1-70 (whole file) | `:1` boundary docstring, `:9` `ROLES`, `:12-29` exceptions (`:20-21` `Forbidden`, `:28-29` `StaleVersion`), `:32-36` `Actor`, `:43-47` `get_user` (`:45` tenant check), `:49-54` `list_users` (`:50-53` projection), `:56-70` `change_role` (`:57` docstring, `:58-59` role validation, `:60-62` lookup + tenant, `:63-64` version guard, `:65-68` UPDATE, `:69` audit, `:70` return) |
+| `tests/test_smoke.py` | 1-33 (whole file) | `:6-11` import pattern, `:14-17` `svc()` with an admin actor, `:21-23`, `:25-29` (`:27` versionless call) |
+| `web/users.js` | 1-49 (whole file) | `:2-15` `api`, `:7-14` `setRole` (`:11` body `{ role }`), `:17-25` `roleOptions` (`:18` option order), `:27-47` `render`, `:30` the row loop, `:36` `aria-label`, `:38` the comment, `:39-42` the change handler (`:41` `'Saved.'`), `:49` `render()` |
+| `web/users.html` | 1-19 (whole file) | `:6` `styles.css` link, `:10-15` table (`:12` header row), `:16` `#status` with `role="status" aria-live="polite"`, `:17` script tag |
+
+The directory listing confirmed there is no other source, test or asset file in the slice:
+`BRIEF.md, README.md, run_app.sh, run_checks.sh, src/adminaccess/{__init__,app,store,users}.py,
+tests/test_smoke.py, web/{users.html,users.js}, .bench-fixture-baseline.json, stdout.txt, stderr.txt`
+(plus `__pycache__`, a normal side effect of running the tests). `git status` reports
+`fatal: not a git repository (or any of the parent directories): .git` — there is no history or diff
+to cite, so the fixture baseline was used as the integrity record.
+
+## 2. Commands executed, with observed output
+
+### 2.1 Baseline: the shipped tests pass, and the fixture is untouched
+
+```
+$ sh run_checks.sh
+test_change_role_persists_and_audits (test_smoke.TestUserService.test_change_role_persists_and_audits) ... ok
+test_list_is_tenant_scoped (test_smoke.TestUserService.test_list_is_tenant_scoped) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+EXIT=0
+```
+
+`./run_checks.sh` does **not** work as written — the file is mode 644, not executable:
+
+```
+$ ./run_checks.sh
+/usr/bin/bash: line 5: ./run_checks.sh: Permission denied
+EXIT=126
+$ ls -l run_checks.sh run_app.sh
+-rw-r--r-- 1 sjeva sjeva 95 Oct 14 20:36 run_checks.sh
+-rw-r--r-- 1 sjeva sjeva 81 Oct 14 20:36 run_app.sh
+```
+
+(The package therefore states the `sh run_checks.sh` form. The mode bit is pre-existing and changing
+it is not part of the package.)
+
+```
+$ python3 -V
+Python 3.14.7
+$ git status
+fatal: not a git repository (or any of the parent directories): .git
+```
+
+Fixture integrity — every file's sha256 prefix equals its entry in `.bench-fixture-baseline.json`
+(which stores the first 16 hex characters):
+
+```
+$ sha256sum src/adminaccess/*.py web/* tests/test_smoke.py README.md run_app.sh run_checks.sh
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  src/adminaccess/__init__.py
+826c624f8513f8fbffee3771ec2c51f7be885843fb351a39191a18ccfc81982e  src/adminaccess/app.py
+0d482d5ec2810330abb36ef0e2869923853ac09e41c9b0890ef60a83b62c5d5c  src/adminaccess/store.py
+12ce01bc54e153d97d4e8eca5ccd65e88d8c62470fa051f08eff8930cccf54b5  src/adminaccess/users.py
+bb01124ef86a44107c0f2578223b5c05b72fcdec1eb83ef60317b337f13179f7  web/users.html
+e1e0ff8bcd2ae714e81cd2b09b8b6dcce1cd81f651dae5825fd285795facea37  web/users.js
+4881c89fc369f182149380b597f75fe82d0fe10754a3c1ae74c39ce868a99d28  tests/test_smoke.py
+7676fdce41e2961cd855e11c2ac244266a6e879a5b80e24aad35301ccda4184c  README.md
+6b05f6c9ae73b3c18da249f0543c59596d3de72934903c408960e8986988611c  run_app.sh
+42d19af53bd8ea3270459221b8b94df3ba76bafb7d0b16d4baa08d36f6cc09cb  run_checks.sh
+```
+
+vs `.bench-fixture-baseline.json`: `app.py 826c624f8513f8fb`, `store.py 0d482d5ec2810330`,
+`users.py 12ce01bc54e153d9`, `test_smoke.py 4881c89fc369f182`, `users.html bb01124ef86a4410`,
+`users.js e1e0ff8bcd2ae714` — all match. Since this run I have written only `work-package.md` and
+`evidence.md` in the sandbox, so the fixture is unmodified.
+
+### 2.2 E1 — `Forbidden` is declared and never raised anywhere in `src/`
+
+Grep over the sandbox for `Forbidden|actor\.role|change_role|Actor\(` returned:
+
+```
+src/adminaccess/users.py:20: class Forbidden(Error):        <- the definition, and the only occurrence
+src/adminaccess/users.py:56: def change_role(self, actor: Actor, user_id: str, new_role: str, seen_version: int | None = None) -> dict:
+src/adminaccess/app.py:15:  ACTOR = Actor(id="admin1", tenant_id="t1", role="admin")
+src/adminaccess/app.py:54:  row = SERVICE.change_role(ACTOR, user_id, payload.get("role", ""),
+tests/test_smoke.py:17:     return UserService(store), Actor(id="admin1", tenant_id="t1", role="admin")
+tests/test_smoke.py:27:     row = service.change_role(admin, "u1", "analyst")
+```
+
+`actor.role` appears **nowhere** in `src/`. The only two `change_role` call sites are `app.py:54` and
+the tests, both with an admin actor — which is why the authorisation gate specified in the package
+breaks no existing test in this repository.
+
+### 2.3 E2 — service-level behaviour (`probe_t2.py`, in-memory `Store`, no file touched)
+
+```
+=== A. service-level behaviour ===
+A1 non-admin actor change_role -> ACCEPTED, role now: admin version: 2
+A1b actor.role used anywhere in change_role? source has no reference to actor.role
+A3 stale write -> StaleVersion: expected version 2, got 1
+A4 versionless write -> ACCEPTED, version now: 3
+A5 audit rows: [('user.role_change', 'u1', 'viewer->analyst'), ('user.role_change', 'u1', 'analyst->admin')]
+A6 role/version before stale write: admin 3 | after: admin 3
+A6 audit count after rejected write: 2
+```
+
+Reading: **A1** — an `Actor(role="viewer")` in the matching tenant promoted a user to `admin`. This
+is the authorisation gap in §5 of the package, measured rather than assumed. **A3** — the version
+guard works when a version is supplied. **A4** — a versionless write is accepted and applied
+(last-write-wins), which is exactly what the shipped UI produces, because `users.js:11` sends
+`{ role }` only. **A5** — one `user.role_change` audit row per applied change, detail `old->new`.
+**A6** — a rejected write leaves the role, the version and the audit table untouched.
+
+### 2.4 E3 — the UPDATE is persisted by `store.audit()`'s commit, not by itself
+
+File-backed `Store`, then read back through a **separate** sqlite3 connection:
+
+```
+after normal change_role, separate connection sees: ('analyst', 2)
+after change_role with audit() skipped, separate connection sees: ('analyst', 2)      <- stale: the UPDATE was not durable
+```
+
+The second line is the finding: with `store.audit` replaced by a no-op, a separate connection still
+saw the pre-change role — the `UPDATE` at `users.py:65-68` had never been committed. The commit that
+persists it is the one inside `Store.audit` (`store.py:60`); `change_role` itself calls no `commit()`.
+That is why §6 of the package requires the audit call to stay on the success path and §7.2 adds
+`test_applied_change_is_visible_to_a_second_connection`.
+
+### 2.5 E4 — HTTP behaviour of the shipped app (`sh run_app.sh`, port 8099)
+
+```
+B1 GET /api/users                     -> (200, {'users': [{'id': 'u1', 'email': 'ana@example.test', 'role': 'viewer', 'version': 1}, {'id': 'u2', 'email': 'bo@example.test', 'role': 'analyst', 'version': 1}]})
+B2 POST {role:admin} no version       -> (200, {'user': {'id': 'u1', 'tenant_id': 't1', 'email': 'ana@example.test', 'role': 'admin', 'version': 2, 'updated_at': 1792028507.4762106}})
+B3 GET /api/users (after B2)          -> (200, {'users': [{'id': 'u1', 'email': 'ana@example.test', 'role': 'admin', 'version': 2}, {'id': 'u2', 'email': 'bo@example.test', 'role': 'analyst', 'version': 1}]})
+B4 POST stale {role:viewer, ver:1}    -> (400, {'error': 'StaleVersion', 'message': 'expected version 2, got 1'})
+B5 POST bad role {role:root}          -> (400, {'error': 'ValidationError', 'message': "role must be one of ('viewer', 'analyst', 'admin')"})
+B6 GET /styles.css                    -> (404, {'error': 'not found'})
+```
+
+Reading: the wire already carries `version` per user (B1) and already honours an echoed version (B4);
+a versionless POST is accepted and applied (B2, which is what today's UI sends); and the failure
+envelope is `{"error": <ExceptionClassName>, "message": ...}` on a 400 (B4, B5) — the contract the new
+client branches on. B6 is the `styles.css` referenced by `web/users.html:6`, which does not exist in
+`web/`.
+
+### 2.5a E4a — harness constraint for HTTP-level tests
+
+An in-process `HTTPServer` serving the shipped `Handler` from a worker thread died on every request:
+
+```
+sqlite3.ProgrammingError: SQLite objects created in a thread can only be used in that same thread.
+The object was created in thread id 138655617558336 and this is thread id 138655605298880
+  File ".../src/adminaccess/store.py", line 44, in fetchall
+  File ".../src/adminaccess/users.py", line 50, in list_users
+```
+
+because `Store` opens `sqlite3.connect(path)` with the default `check_same_thread=True`
+(`store.py:31`). This is a test-harness constraint, not an application defect (`run_app.sh` serves
+from the main thread), and it is why §7.4 of the package specifies the server on the main thread and
+the client driver on a background thread.
+
+### 2.6 E5 — the static routes are broken: `GET /`, `/users.html`, `/users.js` drop the connection
+
+```
+/              -> ('ERR', 'RemoteDisconnected', 'Remote end closed connection without response')
+/users.html    -> ('ERR', 'RemoteDisconnected', 'Remote end closed connection without response')
+/users.js      -> ('ERR', 'RemoteDisconnected', 'Remote end closed connection without response')
+/styles.css    -> (404, 'application/json', b'{"error": "not found"}')
+/api/users     -> (200, 'application/json', b'{"users": [{"id": "u1", "email": "ana@example.test", "role": "admin", ...')
+```
+
+The server's own traceback for the same requests:
+
+```
+File ".../src/adminaccess/app.py", line 37, in do_GET
+    body = (WEB / "users.js").read_bytes()
+FileNotFoundError: [Errno 2] No such file or directory: '.../src/web/users.js'
+```
+
+(and the equivalent at `app.py:30` for `/users.html`). Cause, verified by resolving the constant:
+
+```
+app.py       -> /home/sjeva/bench/model-testing/runs/a/T2/deepseek-v4.1-flash/src/adminaccess/app.py
+WEB constant -> /home/sjeva/bench/model-testing/runs/a/T2/deepseek-v4.1-flash/src/web
+exists?      -> False
+repo web/    -> /home/sjeva/bench/model-testing/runs/a/T2/deepseek-v4.1-flash/web
+repo web/ exists -> True
+```
+
+So `app.py:11` points the static root at a directory that does not exist, and the screen cannot be
+opened through `run_app.sh` at all. Reported in the package as R10 / Deferred D3 and explicitly
+**not** fixed there (the package freezes `app.py`), but called out because it blocks UI-level
+verification of this defect.
+
+### 2.7 E6 — the reported defect, reproduced end-to-end in a browser
+
+Setup: the shipped `Handler` served the repository's real `web/` directory on
+`http://127.0.0.1:8130`, using an 8-line harness that repoints `adminaccess.app.WEB` and changes
+nothing else; the page was then driven with Hermes's headless-Chromium browser tool over CDP.
+(`lightpanda` is on PATH — `which lightpanda` -> `/home/sjeva/.local/bin/lightpanda` — and was not
+needed.)
+
+**(a) The page as shipped renders nothing.** With `web/users.js` loaded unmodified:
+
+```
+TITLE: 🐴 Users and access
+ROWS: 0
+STATUS: ''
+SELECTS: []
+```
+
+The response envelope is never unwrapped, so the row loop throws:
+
+```
+1 for-of over envelope: THROWS: TypeError: {(intermediate value)} is not iterable
+```
+
+i.e. `users.js:30` (`for (const user of await api.listUsers())`) iterates `{users: [...]}` itself
+rather than its `users` array, and the rejection is unhandled because `render()` is called bare at
+`users.js:49`. The API is fine from the same page:
+
+```
+manual fetch: status=200 body={"users": [{"id": "u1", "email": "ana@example.test", "role": "viewer", "version": 1}, ...]}
+```
+
+**(b) With only the envelope unwrapped, the shipped change handler writes on selection.** The row
+building and the `addEventListener('change', ...)` body were reproduced verbatim from
+`users.js:39-42`, and `window.fetch` was instrumented:
+
+```
+3 rows rendered: rows=2
+4 BEFORE change -> ["u1:viewer","u2:analyst"]
+5 AFTER change  -> ["u1:admin","u2:analyst"]
+6 status text   -> 'Saved.'
+7 network calls -> [["/api/users","GET"],["/api/users/u1/role","POST"]]
+```
+
+One `change` event, no button pressed, produced exactly one POST. Confirmed server-side from outside
+the browser:
+
+```
+server-side state: {"users": [{"id": "u1", "email": "ana@example.test", "role": "admin", "version": 2}, {"id": "u2", "email": "bo@example.test", "role": "analyst", "version": 1}]}
+```
+
+`viewer -> admin` was applied, version 1 -> 2, with no confirmation step. That is the reported
+defect, reproduced rather than assumed.
+
+**(c) A rejected write is still reported as success.** `fetch` resolves (does not reject) on a 400:
+
+```
+A fetch-400 semantics: r.ok=false status=400 body={"error":"ValidationError","message":"role must be one of ('viewer', 'analyst', 'admin')"}
+```
+
+and with that response the shipped handler body still ran `status.textContent = 'Saved.'`:
+
+```
+C status text after REJECTED write: 'Saved.'
+D server truth after rejected write: u1:admin@v2 u2:analyst@v1
+```
+
+The server had changed nothing and the screen claimed success: `users.js:40-41` never inspects
+`response.ok` or the body's `error`.
+
+### 2.8 E7 — the version guard is check-then-act and loses updates (`probe_race.py`)
+
+A competing write injected into the gap between `change_role`'s SELECT and its UPDATE (by wrapping
+`Store.fetchone` — the same technique the package specifies for the regression test):
+
+```
+client echoes version: 1
+  [gap] competing write applied: {'role': 'admin', 'version': 2}
+outcome: change_role SUCCEEDED -> {'role': 'analyst', 'version': 3}
+final server row: {'role': 'analyst', 'version': 3}
+the competing admin grant survived? False
+audit rows: [('user.role_change', 'viewer->analyst')]
+```
+
+The stale apply won, the other administrator's grant was silently overwritten, the version was bumped
+again, and the audit row records `viewer->analyst` when the change actually went `admin->analyst`.
+The comparison at `users.py:63-64` passed because the row it compared against had been read *before*
+the competing write. That is why the package requires the guarded UPDATE
+(`... WHERE id = ? AND version = ?` + `rowcount`) in §4.3 and specifies
+`test_concurrent_write_between_select_and_update_is_rejected` in §7.2. It is not reachable through
+the shipped single-threaded server (`app.py:68`), but it is the same check-then-act class of defect
+this package exists to remove, one layer down.
+
+## 3. What was NOT verified (stated plainly)
+
+* The UI-level acceptance conditions AC1-AC5 were exercised by hand in a browser (§2.7) using a
+  *reproduced* `users.js` render path, because the shipped `users.js` renders no rows at all
+  (§2.7a) and the shipped static routes serve no assets (§2.6). No automated UI test exists in this
+  repository and none was written: the package specifies them, it does not implement them (the brief
+  says do not implement the change).
+* `lightpanda` was not started; Hermes's Chromium-based browser tool was used over CDP against a page
+  served from the repository's own `web/` directory.
+* No claim is made about the real deployment (the actor fixture at `app.py:15`, the absent session
+  layer, production's top-role name). The package flags each as a risk to confirm, not as a fact.
+* No HTTP-level test of `Forbidden` was executed: the shipped `ACTOR` (`app.py:15`) is an admin and
+  the package must not change `app.py`, so the authorisation gap was measured at the service level
+  instead (§2.3 A1). §7.4 of the package specifies how to patch `app.ACTOR` in a test.
+* The `change`-handler reproduction in §2.7b re-typed four lines of `users.js` inside the browser
+  (the shipped handler body verbatim, plus an envelope unwrap); it did not run the shipped file
+  end-to-end, because that file renders no rows. Both facts are stated so the claim is not
+  overread.
+
+## 4. Environment note — a concurrent writer created these two file paths during this session
+
+Disclosed because it affects how this directory should be read, not because it changes any finding.
+While this analysis was running, the paths `work-package.md` and `evidence.md` appeared in this
+directory, written by something other than this session:
+
+```
+$ find . -printf '%TY-%Tm-%Td %TH:%TM:%TS  %p\n' | sort -n | tail -5
+2026-10-14 20:41:00  ./BRIEF.md, ./.bench-fixture-baseline.json, ./stdout.txt, ./stderr.txt   <- this sandbox (re)created
+2026-10-14 20:43:04  ./work-package.md     (27110 bytes)
+2026-10-14 20:43:41  ./evidence.md         (15378 bytes)
+
+$ sha256sum work-package.md evidence.md          # before this session wrote its own versions
+8ac388f0ed2b455152513d407e59a833e85d81616e8fad3ca7d87fa4dab8ba29  work-package.md
+b75e4c0ec486825a427be1f85b643e9cf3a8ceb721b3ba7d23a49687f5def410  evidence.md
+```
+
+The harness's own command line explains the shape of this. From `ps -eo pid,lstart,cmd`:
+
+```
+cd /home/sjeva/bench/model-testing && rm -rf runs/a/T2/gpt-6-luna runs/a/T2/deepseek-v4.1-flash &&
+python3 harness/driver.py --stage a --only T2 --models gpt-6-luna,deepseek-v4.1-flash --timeout 600
+```
+
+so sibling sandboxes exist at `runs/a/T2/gpt-6-luna` and `runs/a/T2/haiku-5.5`, each already holding
+its own pair of deliverables (timestamps 20:40:42 / 20:36:41). The two files that appeared *in this*
+directory were written during this session by a concurrent run of the same task — i.e. one of the
+candidate agents wrote to this path. Handling:
+
+* both were copied byte-for-byte to
+  `/home/sjeva/bench/model-testing/hermes-home/cache/scratch/preexisting/{work-package.md,evidence.md}`
+  before anything replaced them, so no content was destroyed (hashes above pin exactly what was
+  preserved);
+* their full pre-existing content was read before replacement, as the write tool requires;
+* this session then wrote its own `work-package.md` and `evidence.md` at the required paths, as the
+  brief demands, and those are the documents described above;
+* nothing from the pre-existing files was copied into this package — the two reach different
+  conclusions in places (for example on whether a staged value should be kept or discarded after a
+  `StaleVersion`).
+
+Anyone reading this directory should check the mtimes of `work-package.md`/`evidence.md` and confirm
+which session's pair is present, since two runs targeted the same two paths.
+
+
+### README.md
+# adminaccess
+
+Internal admin console slice: user access levels for the OpenJM tenant portal.
+Python 3 stdlib only. The HTTP layer is `http.server`; the data layer is sqlite3.
+
+```
+src/adminaccess/store.py     sqlite schema + Store
+src/adminaccess/users.py     UserService: list/get/change_role (+ audit)
+web/users.html               the access-management screen
+web/users.js                 its behaviour
+tests/                       smoke tests
+run_app.sh                   serve the UI on :8099
+run_checks.sh                run the tests
+```
+
+Design notes worth knowing before you change anything:
+
+* `change_role()` writes straight through. The screen calls it on every dropdown change.
+* `users.version` is a monotonically increasing integer used for optimistic concurrency:
+  a client that echoes the version it read may be rejected with `StaleVersion`.
+* Every accepted change writes an `audit` row (`user.role_change`).
+
+
+### work-package.md
+# Work package — role changes must be staged, confirmed, authorised and version-guarded
+
+Target: the `adminaccess` admin-console slice in this directory
+(`src/adminaccess/{app,store,users}.py`, `web/users.{html,js}`, `tests/test_smoke.py`).
+Every file+line reference below was read in this working directory; every claim marked *verified*
+has a command and an observed output in `evidence.md`. Nothing here is inferred from a summary.
+
+Defect (as reported): `web/users.js` POSTs a role change the moment the administrator picks a
+different option, so the access level changes with no confirmation step. Support has seen accidental
+privilege changes.
+
+Defect (as measured): reproduced end-to-end. One `change` event on the Role select produced exactly
+one `POST /api/users/u1/role`, persisted `viewer -> admin` (version 1 -> 2) and displayed `Saved.`
+with no button pressed (`evidence.md` E6). The handler that does this is `web/users.js:39-42`:
+
+```js
+select.addEventListener('change', async () => {
+  await api.setRole(user.id, select.value);            // <- write on selection
+  document.getElementById('status').textContent = 'Saved.';
+});
+```
+
+Two related defects sit on the same code path and are covered here because they cannot be separated
+from the fix (§8 R9/R10): the row loop never renders (`users.js:30`), and a rejected POST still
+displays `Saved.` (`users.js:41`).
+
+## 0. Scope
+
+In scope: staging + explicit apply/discard in `web/users.js`; the minimum markup in
+`web/users.html` to host those controls; the server-side authorisation gate and the atomic version
+check in `src/adminaccess/users.py`; new regression tests.
+
+Out of scope: no new endpoints, no request/approval workflow, no schema change, no HTTP status-code
+change, no framework, no dependency, no polling, no client-side persistence of staged state, no
+change to `change_role`'s immediate-apply contract. Two deferred items are listed in §9.
+
+## 1. What changes, in which files, and why those are the right boundaries
+
+| # | File | Change | Why this is the right boundary |
+|---|---|---|---|
+| 1 | `web/users.js` | Replace the auto-POST handler (`users.js:39-42`) with per-row staging and explicit Apply/Cancel controls; make `api.setRole` (`users.js:7-14`) send `version`; iterate the response envelope in the row loop (`users.js:30`); report real failures instead of always writing `Saved.` (`users.js:41`). | The premature write lives *only* here. `users.js:38` states the intent it was written for ("Saving on change keeps the screen simple: no Save button to forget to press") — the fix removes that trade-off, not the screen. No other file decides *when* a change is transmitted. |
+| 2 | `web/users.html` | Add one `<th>` for the new action cell (`users.html:12`); keep everything else, in particular `<p id="status" role="status" aria-live="polite">` (`users.html:16`) as the single message target. | Rows gain two controls, so the table needs a third column. Reusing `#status` avoids inventing a second alerting mechanism and preserves the existing accessibility contract. |
+| 3 | `src/adminaccess/users.py` | (a) Raise the already-declared but never-raised `Forbidden` (`users.py:20-21`) at the top of `change_role` (`users.py:56`) when the actor may not administer access. (b) Replace the check-then-act version comparison with a guarded UPDATE (§4.3). Nothing else changes. | `users.py:1` states the contract ("Authorization here is the real boundary; the UI is not"), and `change_role` is the only place holding the `Actor` (`users.py:32-36`) and performing the write (`users.py:63-69`). A guard here covers every caller; a guard in `app.py` would be a second, weaker copy. The read-modify-write at `users.py:60-68` is exactly where (b) belongs. |
+| 4 | `tests/test_role_apply.py` *(new)* | The regression tests in §7. | `run_checks.sh` discovers `tests/`, so new coverage belongs there. `tests/test_smoke.py` stays byte-identical (Frozen, §10). |
+| 5 | `README.md` | One sentence at `README.md:18` ("The screen calls it on every dropdown change.") becomes false once the screen stages instead. Correct that sentence only. | A design note that contradicts the code invites the next engineer to reintroduce the bug. Docs-only; not part of the acceptance criteria. |
+
+Not changed: `src/adminaccess/store.py` (no schema change needed — `users.version` at `store.py:14`
+and the `audit` table at `store.py:17-25` already do the job, which is what keeps this package
+small) and `src/adminaccess/app.py` (`app.py` already forwards `payload.get("version")` at
+`app.py:55`; its routing, its JSON error envelope at `app.py:57` and its 400-for-every-failure
+behaviour are left exactly as they are — the UI branches on the `error` field instead).
+
+Why no server-side "pending change" table: `change_role` applies immediately and returns the new row
+(`users.py:70`), `README.md:18` documents write-through, and `tests/test_smoke.py:25-29` pins it
+(`change_role(admin, "u1", "analyst")` -> `role == "analyst"`, `version == 2`). A two-phase server
+workflow would break that test and rewrite the data model. Staging in the browser is the bounded fix.
+
+Alternatives rejected: a `confirm()` dialog (still commits implicitly on OK, nothing to inspect or
+discard); a second endpoint (duplicates authorisation and audit — a redesign); a client-only fix
+(leaves the defect's root cause: the endpoint has no actor check, §5).
+
+## 2. Intended state transition
+
+Per row, three client-side values. Only one is client-authored.
+
+| Value | Meaning | Source of truth |
+|---|---|---|
+| `applied` | the role the server last confirmed for this user | `GET /api/users` on load, or `response.user.role` after a successful apply |
+| `version` | the server version that `applied` corresponds to | `GET /api/users` on load, or `response.user.version` after a successful apply |
+| `staged` | the option currently selected in the dropdown | the administrator |
+
+Invariant: `applied` and `version` are only ever written from a server response, never from local
+intent. `staged` is the only value the client invents. `dirty := (staged !== applied)`.
+
+Row state, derived from those three values: `clean` (nothing staged), `dirty` (staged differs from
+applied, nothing in flight), `saving` (a request is in flight for this row), `conflict` (a
+`StaleVersion` refresh left `staged !== applied`), `error` (a failed apply that left
+`staged !== applied`).
+
+```
+              select a different option
+  clean ────────────────────────────────▶ dirty              (no network call at all)
+    ▲                                       │
+    │ Cancel / Discard                      │ Apply
+    └───────────────────────────────────────┤ POST {role: staged, version}
+                                            ▼
+                    ┌───────────────────────┴────────────────────────┐
+                    │ 200                                            │ failure
+                    ▼                                                ▼
+  applied := response.user.role                    applied, version UNCHANGED
+  version := response.user.version                 persisted role UNCHANGED
+  staged  := null, state := clean                  staged: per §3.5-3.7
+```
+
+Failure rule the implementer must preserve: **on any failure the server's role for that user is
+unchanged**, and the client must not present the staged value as applied. A failed Apply must never
+render as success — today `users.js:41` writes `Saved.` unconditionally, which is provably wrong: a
+rejected POST still displayed `Saved.` while the server row was unchanged (`evidence.md` E6).
+(`fetch` rejects only on network errors; an HTTP 400 **resolves**, so the code must branch on
+`response.ok`/the body's `error`, not on `try/catch` alone.)
+
+## 3. Save/Apply and Cancel/Discard semantics (exact)
+
+1. Selecting a different option sets `staged` and re-renders the row. **No request is sent.** The
+   dropdown shows the staged value, so the administrator can see what they picked.
+2. A row with `staged !== null && staged !== applied` is `dirty`: Apply and Cancel are enabled and
+   the row carries a visible unsaved marker (e.g. `row.dataset.state = "dirty"` plus a text marker —
+   not colour alone).
+3. A row with `staged === null || staged === applied` is `clean`: both controls are disabled.
+4. **Apply** is a `<button type="button">` with accessible name `Apply role change for <email>`
+   (mirroring the existing `aria-label` pattern on the select, `users.js:36`). It sends exactly one
+   `POST /api/users/<id>/role` with body `{"role": <staged>, "version": <version>}` and, for that
+   row, disables the select and both controls until the response arrives, so a double click cannot
+   produce a second POST.
+5. Success (`200` with `user`): `applied = response.user.role`, `version = response.user.version`,
+   `staged = null`, state `clean`, and `#status` reads exactly `Saved.` — the same string the screen
+   uses today (`users.js:41`), so wording and the existing live-region behaviour are preserved.
+6. `StaleVersion`: see §4.4.
+7. `Forbidden`: nothing was changed server-side; `staged` is kept, the row is marked `error`, Apply
+   stays **enabled** and `#status` says the signed-in account may not change access levels. The
+   client deliberately does not disable the control: it cannot know the actor's authority
+   (`GET /api/users` returns only id/email/role/version, `users.py:50-53`), and pretending to know
+   would re-create the illusion that the UI is the boundary (§5). The server refuses again; that is
+   correct.
+8. `ValidationError` / `NotFound`: the server refused the value or the target outright, so `staged`
+   is reverted to `applied` (`NotFound` additionally triggers a list refresh) and `#status` shows
+   the server's `message` verbatim.
+9. Unrecognised non-2xx, unparsable body, or a network error: `staged` is kept, Apply stays enabled,
+   `#status` reads "Could not save the change. Try again." Nothing is claimed to have succeeded.
+10. **Cancel** discards the staged value: `staged = null`, the select is set back to `applied`, the
+    row returns to `clean`, `#status` is cleared. It sends **no** request and never rewrites the
+    server — Cancel is a client-side discard, not a revert of a committed change.
+11. Selecting again while dirty simply replaces `staged`; if it equals `applied` the row returns to
+    `clean` and `#status` is cleared.
+12. Reloading the page discards staged values. Staged state must **not** be persisted in
+    `localStorage`/`sessionStorage`: a staged privilege grant must not survive a reload and reappear
+    later.
+13. SHOULD: a `beforeunload` guard while any row is dirty, so an accidental navigation cannot
+    silently drop a staged change. Not part of the acceptance conditions; drop it if the reviewer
+    wants the smallest possible diff.
+
+## 4. Stale updates (`version`)
+
+The mechanism already exists and must be used, not rebuilt.
+
+### 4.1 What already works
+
+* `users.version` is an integer, bumped on every applied write (`store.py:14`, `users.py:66`).
+* `list_users` returns it per user (`users.py:50-53`) — *verified*: `{"id":"u1",...,"version":1}`
+  (`evidence.md` E4/B1).
+* `app.py:55` already forwards `payload.get("version")` into `change_role`.
+* `change_role` rejects a mismatch with `StaleVersion` (`users.py:63-64`) — *verified*, and the HTTP
+  layer surfaces it as `400 {"error":"StaleVersion","message":"expected version 2, got 1"}`
+  (`evidence.md` E2/A3, E4/B4).
+* The POST response returns the full refreshed row including the new version (`users.py:70`,
+  `app.py:59`), so the client can update its cached version without a refetch.
+
+### 4.2 The hole that makes it dead code today
+
+The client never sends the version: `users.js:11` builds `{ role }` only, so `seen_version` arrives
+as `None` and the guard at `users.py:63` is skipped entirely — every UI write is a blind
+last-write-wins. *Verified*: a POST without `version` was accepted and bumped `version` 1 -> 2
+(`evidence.md` E2/A4, E4/B2). Fixing this is the core of "how stale updates are handled".
+
+### 4.3 The server must also make the comparison atomic (part of change 3)
+
+`users.py:60-68` is a read-modify-write: SELECT, compare in Python, UPDATE. Ship the comparison and
+the write as one statement so they cannot be separated:
+
+```
+# arm 1 — seen_version is None (unchanged, backward compatible: tests/test_smoke.py:27 depends on it)
+UPDATE users SET role=?, version=version+1, updated_at=? WHERE id=?
+# arm 2 — seen_version given
+UPDATE users SET role=?, version=version+1, updated_at=? WHERE id=? AND version=?
+if cursor.rowcount != 1: raise StaleVersion(...)
+```
+
+Pin it with a test that injects a competing write between the read and the write
+(`test_concurrent_write_between_select_and_update_is_rejected`, §7.2) — with today's check-then-act
+code that competing write is silently overwritten; with the guarded UPDATE it is refused.
+
+Keep the tenant check (`users.py:60-62`) **ahead** of the UPDATE, so a foreign-tenant id still yields
+`NotFound` rather than `StaleVersion`. `HTTPServer` is single-threaded (`app.py:68`) so this is not
+currently exploitable, but a check-then-act guard for a permission write is the same class of defect
+being fixed here, one layer down, and the fix is 3 lines.
+
+### 4.4 Client behaviour on `StaleVersion`
+
+1. Do **not** claim success and do **not** auto-retry: a blind re-POST would silently overwrite the
+   colleague's change — the very defect this package exists to remove.
+2. Re-read `GET /api/users`, take `applied` and `version` for that row from the server, and keep the
+   administrator's `staged` value visible (it may still be what they want).
+3. If `staged !== applied` after the refresh, mark the row `conflict` and have `#status` explain it,
+   e.g. "This user's access was changed by someone else. Review the current role and apply again."
+4. The refreshed `version` is what the next Apply echoes, so a retry after a conflict is a normal
+   optimistic-concurrency retry.
+
+(Alternative, also acceptable and simpler: discard `staged` on a conflict and reset the row to the
+server's role. Pick one and state it in the code comment; the requirement is only that the
+administrator is told and that nothing is auto-reapplied.)
+
+### 4.5 Residual gap, carried deliberately
+
+A versionless write (`seen_version is None`, `users.py:63`) is still accepted as last-write-wins.
+This package does **not** close that at the HTTP layer: `tests/test_smoke.py:27` calls `change_role`
+with no version and must keep passing, and making `version` mandatory would break any already-served
+copy of `users.js` for the duration of a rolling deploy (`app.py:36-42` serves `users.js` with no
+cache headers, so browser caches outlive a release). See Deferred D1 in §9 — a known limitation, not
+an oversight.
+
+Two tabs of the same screen each hold their own version; the second Apply gets `StaleVersion` and
+reconciles per §4.4. That is the intended behaviour and is the most likely shape of the support
+reports.
+
+## 5. Server-side authorization (and why the frontend cannot be the boundary)
+
+### 5.1 Required change
+
+In `src/adminaccess/users.py`, in `change_role` (`users.py:56`), as the **first** statement of the
+method body — before role validation (`users.py:58-59`), before the user lookup (`users.py:60-62`)
+and before the version guard (`users.py:63-64`):
+
+* If `actor.role != "admin"`, raise `Forbidden` — the type already declared at `users.py:20-21` and
+  currently raised nowhere (grep over `src/`: the only occurrence of `Forbidden` is its definition).
+* Nothing else in `change_role` changes: no signature change, no new exception type, no change to
+  the returned row. Keep tenant scoping and role-enum validation exactly as they are.
+* Do not build a permission model, roles table or policy engine. With the flat three-role vocabulary
+  (`ROLES`, `users.py:9`), `actor.role == "admin"` is the whole rule.
+
+Order is part of the requirement: authorising first means a non-admin cannot use the endpoint as an
+oracle (no `NotFound` to probe whether a user id exists in the tenant, no `ValidationError` to probe
+the role vocabulary, no `StaleVersion` to observe that someone else changed the row).
+
+### 5.2 Why the frontend cannot be the boundary
+
+1. **The endpoint is directly callable.** The screen is only one client of
+   `POST /api/users/<id>/role` (`app.py:48-59`); a plain HTTP client reaches the same `change_role`
+   call. Disabling or hiding a control in `users.js` removes the accident, not the ability.
+2. **There is no check to rely on today.** `change_role` reads `actor.id` (`users.py:69`) and
+   `actor.tenant_id` (`users.py:61`) but never `actor.role`. *Verified*: an `Actor(role="viewer")`
+   in the right tenant successfully promoted a user to `admin` (`evidence.md` E2/A1). The tenant
+   comparison at `users.py:45`/`users.py:61` is data scoping, not authority.
+3. **`version` is a concurrency control, not an authorisation control** — a client may send any
+   value for it.
+4. **The service is the only place that holds the actor.** `app.py:15` fixes `ACTOR` server-side and
+   `app.py:54` passes it in; the client never names the actor. Therefore the client cannot be trusted
+   with the decision *and* does not need to supply anything. Do **not** add an
+   `actor`/`role`/`is_admin` field to the POST body: anything the client can send, the client can
+   forge.
+5. **The service is the reusable boundary.** `users.py:1` and `README.md:18` declare it as such; a
+   guard in the HTTP handler would sit inside the blanket `except Exception` at `app.py:56` and would
+   leave any other `UserService` caller unguarded.
+6. **The HTTP layer's actor is a fixture.** `app.py:15` hardcodes an `admin` actor; in production the
+   actor must come from an authenticated session. Do **not** build that identity system here — only
+   guarantee that whatever actor the HTTP layer supplies is checked. Consequence to accept
+   knowingly: with the fixture's admin actor the new gate is invisible in the running app, which is
+   why the service-level tests in §7.1 are mandatory evidence that it exists.
+
+## 6. Audit expectation for an applied change
+
+* Exactly **one** `audit` row per **applied** change, written by `change_role` itself at
+  `users.py:69` 

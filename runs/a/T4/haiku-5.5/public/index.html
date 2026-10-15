@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users and access</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Users and access</h1>
+    <p class="lede">Change a user's access level. Changes are recorded in the audit log.</p>
+    <table id="users-table">
+      <thead>
+        <tr><th scope="col">Email</th><th scope="col">Access level</th><th scope="col">Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p id="error" role="alert"></p>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

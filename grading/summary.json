@@ -1,0 +1,115 @@
+[
+  {
+    "task": "T2",
+    "task_area": "framing",
+    "label": "deepseek-v4.1-flash",
+    "candidate": "DeepSeek V4.1 Flash",
+    "status": "completed",
+    "elapsed_s": 501.9,
+    "metered_usd": 0.146113,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 126799,
+    "output_tokens": 78664,
+    "cache_read_tokens": 2279424,
+    "cache_write_tokens": 0,
+    "api_calls": 40,
+    "overall": 85.7,
+    "raw_overall": 85.7,
+    "categories": {
+      "instruction": 100.0,
+      "testing": 50.0,
+      "maintainability": 100.0
+    },
+    "redistributed": [
+      "functional",
+      "security",
+      "efficiency"
+    ],
+    "critical_failures": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 6,
+    "deliverables": [
+      "README.md",
+      "evidence.md",
+      "work-package.md"
+    ],
+    "efficiency_relative": 45.8
+  },
+  {
+    "task": "T2",
+    "task_area": "framing",
+    "label": "gpt-6-luna",
+    "candidate": "GPT-6 Luna",
+    "status": "completed",
+    "elapsed_s": 95.4,
+    "metered_usd": 0.00757,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 27,
+    "output_tokens": 7036,
+    "cache_read_tokens": 123740,
+    "cache_write_tokens": 22496,
+    "api_calls": 9,
+    "overall": null,
+    "raw_overall": 82.2,
+    "categories": {
+      "instruction": 70.0,
+      "testing": 90.0,
+      "maintainability": 75.0,
+      "functional": 78.0,
+      "security": 94.0,
+      "efficiency": 88.0
+    },
+    "redistributed": [],
+    "critical_failures": [
+      "evaluator: contradicting the brief's hard constraints: 400 for ValidationError and NotFound must remain unchanged, but the package maps not-found to 404 and encodes it in test_post_role_not_found_returns_404"
+    ],
+    "checks_passed": 13,
+    "checks_total": 14,
+    "files_touched": 6,
+    "deliverables": [
+      "README.md",
+      "evidence.md",
+      "work-package.md"
+    ]
+  },
+  {
+    "task": "T2",
+    "task_area": "framing",
+    "label": "haiku-5.5",
+    "candidate": "Claude Haiku 5.5",
+    "status": "completed",
+    "elapsed_s": 139.2,
+    "metered_usd": 0.093193,
+    "attempt": 1,
+    "substituted": false,
+    "input_tokens": 20,
+    "output_tokens": 23393,
+    "cache_read_tokens": 204377,
+    "cache_write_tokens": 39171,
+    "api_calls": 9,
+    "overall": 91.4,
+    "raw_overall": 91.4,
+    "categories": {
+      "instruction": 95.0,
+      "testing": 91.0,
+      "maintainability": 96.0,
+      "functional": 92.0,
+      "security": 88.0,
+      "efficiency": 85.0
+    },
+    "redistributed": [],
+    "critical_failures": [],
+    "checks_passed": 14,
+    "checks_total": 14,
+    "files_touched": 6,
+    "deliverables": [
+      "README.md",
+      "evidence.md",
+      "work-package.md"
+    ],
+    "efficiency_relative": 100.0
+  }
+]

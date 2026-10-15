@@ -1,0 +1,47 @@
+{
+  "estimated_cost_usd": 0.0023100462,
+  "cost_status": "estimated",
+  "cost_source": "provider_models_api",
+  "input_tokens": 37795,
+  "output_tokens": 1477,
+  "cache_read_tokens": 73216,
+  "cache_write_tokens": 0,
+  "reasoning_tokens": 1099,
+  "total_tokens": 112488,
+  "api_calls": 6,
+  "model": "deepseek/deepseek-v4.1-flash",
+  "provider": "openrouter",
+  "session_id": "20261014_200541_335386",
+  "completed": true,
+  "partial": false,
+  "interrupted": false,
+  "turn_exit_reason": "text_response(finish_reason=stop)",
+  "failed": false,
+  "service_tier": null,
+  "auxiliary": {
+    "api_calls": 1,
+    "input_tokens": 116,
+    "output_tokens": 15,
+    "cache_read_tokens": 256,
+    "cache_write_tokens": 0,
+    "reasoning_tokens": 0,
+    "estimated_cost_usd": 1.658484e-05,
+    "total_tokens": 131,
+    "by_task": {
+      "title_generation": {
+        "api_calls": 1,
+        "input_tokens": 116,
+        "output_tokens": 15,
+        "cache_read_tokens": 256,
+        "cache_write_tokens": 0,
+        "reasoning_tokens": 0,
+        "estimated_cost_usd": 1.658484e-05
+      }
+    }
+  },
+  "total_including_auxiliary": {
+    "estimated_cost_usd": 0.0023266310400000003,
+    "total_tokens": 112619,
+    "api_calls": 7
+  }
+}

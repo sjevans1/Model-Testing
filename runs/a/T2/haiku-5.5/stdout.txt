@@ -1,0 +1,16 @@
+Both deliverables are written in this directory: `work-package.md` and `evidence.md`. I did not implement the change.
+
+**Findings that shaped the package:**
+- **No server-side role check.** `users.py:56-70` never reads `Actor.role`. A probe with a viewer actor successfully changed u1 to `admin`, so the frontend cannot be the authorization boundary.
+- **Stale check is optional.** `users.py:63` only checks the version when the client sends one, and `users.js:40` sends none.
+- **UI shows success unconditionally.** `users.js:39-42` writes "Saved." whether or not the request succeeded.
+- **Existing render bug.** `users.js:30` iterates the `{"users": [...]}` object as if it were an array. A mocked-DOM probe threw `TypeError` there, so the screen may render no rows as written. The probe used a stub DOM, so this needs confirming in a real browser.
+- **Unauthenticated HTTP surface.** `app.py:15` hard-codes an admin `ACTOR`, so every HTTP request acts as admin. The package flags this as a known gap that needs a separate authentication design.
+
+**Package contents:** file-level changes in `users.py`, `app.py`, `users.js`, `users.html`, `README.md` and tests. It also covers the staged state transition with failure paths, Save/Cancel semantics, 403/409 mapping, audit expectations, 12 named regression tests, compatibility risks, acceptance and stop conditions, and a list of what must stay unchanged.
+
+**Verified by running:** `sh run_checks.sh` passes (2 tests). The service probe and curl probe confirmed the findings above. The curl probe also showed that `POST` with `{"role":"superuser"}` returns 400 and an unknown user returns 400.
+
+**Not verified:** the browser render path and the Save/Cancel UI behaviour. The package makes a manual browser check a sign-off requirement.
+
+**Side effect:** running the Python probes likely left `__pycache__` directories under `src/` and `tests/`. I did not remove them.

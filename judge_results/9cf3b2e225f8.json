@@ -1,0 +1,12 @@
+{
+  "functional": 92,
+  "security": 88,
+  "instruction": 95,
+  "maintainability": 96,
+  "testing": 91,
+  "efficiency": 85,
+  "critical_failures": [],
+  "rationale": "Line citations verified against the fixture: app.py, users.py, store.py, users.js all match. Every behavioral claim reproduced live: run_checks green, viewer-actor admin grant, stale check, audit row, 200 POST, 400 ValidationError/NotFound, node render-throw probe. Package is implementation-ready: precise status mapping, staged-state machine, save/cancel semantics, ordered authorization, explicit untested-audit gap, named tests, mixed acceptance/stop conditions. Known HTTP-boundary gap honestly flagged, not oversold. Minor inefficiency from anchored error-text strings.",
+  "_task": "T2",
+  "_label": "haiku-5.5"
+}

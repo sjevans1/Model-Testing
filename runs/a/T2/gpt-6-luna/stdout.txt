@@ -1,0 +1,3 @@
+Created `work-package.md` and `evidence.md` in the working directory. The package defines the staged-save flow, server authorization, version conflict handling, audit behavior, tests, compatibility risks, and scope boundaries.
+
+Verification: `sh run_checks.sh` passed (2 tests). Direct `./run_checks.sh` could not run because the script is not executable in this sandbox. No implementation code or tests were changed.
